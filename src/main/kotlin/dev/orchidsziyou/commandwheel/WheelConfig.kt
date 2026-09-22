@@ -15,14 +15,26 @@ object WheelConfig {
 
     /** GLFW keycode of the wheel trigger; GLFW_KEY_UNKNOWN (-1) means unbound. Mouse buttons 0-7 are also allowed. */
     var keybind: Int = GLFW.GLFW_KEY_UNKNOWN
+
+    /** Master switch; when off the wheel cannot be opened. */
     var enabled: Boolean = true
+
+    /** Run the selected entry when the trigger is released instead of on left click. */
     var executeOnRelease: Boolean = false
+
+    /** Print a local chat line whenever the wheel runs an entry. */
     var showLogMessage: Boolean = false
+
+    /** Minimum mouse travel (GUI pixels) before a direction counts as selected. */
     var deadZone: Int = 40
+
+    /** Wheel disc size in percent (50-200). */
     var sizePercent: Int = 100
 
     /** Font size in percent; 50 is half the vanilla size, 200 is double. */
     var fontScalePercent: Int = 100
+
+    /** Seconds the wheel may stay open before it auto-closes without executing. */
     var timeoutSeconds: Int = 10
 
     /** Up, Up Right, Right, Down Right, Down, Down Left, Left, Up Left */
@@ -34,11 +46,16 @@ object WheelConfig {
     private val file: Path
         get() = FabricLoader.getInstance().configDir.resolve("commandwheel.json")
 
+    /**
+     * Reads the config file if it exists. Missing or malformed fields keep their
+     * defaults; IO errors are swallowed so the game can always start.
+     */
     fun load() {
         runCatching {
             if (!Files.exists(file)) return
             val obj = JsonParser.parseString(Files.readString(file)).asJsonObject
 
+            // only accepts existing primitive values; a missing or mistyped field keeps the default
             fun prim(name: String) = obj.get(name)?.takeIf { it.isJsonPrimitive }
 
             prim("keybind")?.let { keybind = it.asInt }
@@ -49,6 +66,7 @@ object WheelConfig {
             prim("sizePercent")?.let { sizePercent = it.asInt }
             prim("fontScalePercent")?.let { fontScalePercent = it.asInt }
             prim("timeoutSeconds")?.let { timeoutSeconds = it.asInt }
+            // copy at most the known slot count so an oversized array cannot break the list
             obj.getAsJsonArray("slots")?.let { array ->
                 for (i in 0 until minOf(array.size(), slots.size)) {
                     slots[i] = array[i].asString
@@ -57,6 +75,11 @@ object WheelConfig {
         }.onFailure { it.printStackTrace() }
     }
 
+    /**
+     * Writes the config to disk. The JSON is first written to a temporary file and
+     * then atomically moved over the real one, so a crash mid-write cannot leave a
+     * truncated config behind.
+     */
     fun save() {
         runCatching {
             val obj = com.google.gson.JsonObject()

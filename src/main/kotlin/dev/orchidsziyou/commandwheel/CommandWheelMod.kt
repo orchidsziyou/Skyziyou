@@ -9,13 +9,17 @@ import net.minecraft.client.Minecraft
 object CommandWheelMod : ClientModInitializer {
 
     override fun onInitializeClient() {
+        // config must be loaded before anything reads it
         WheelConfig.load()
+        // HUD element that draws the wheel while it is open
         WheelRenderer.register()
 
+        // drive the wheel state machine once per client tick
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             WheelState.onTick()
         }
 
+        // /commandwheel and /cwh both open the settings screen
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
                 ClientCommands.literal("commandwheel").executes { ctx ->
@@ -33,6 +37,7 @@ object CommandWheelMod : ClientModInitializer {
     }
 
     private fun openConfigScreen(mc: Minecraft) {
+        // command handlers may not run on the render thread, so hop over via execute
         mc.execute { mc.setScreen(WheelConfigScreen()) }
     }
 }

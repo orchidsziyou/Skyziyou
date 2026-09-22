@@ -12,6 +12,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * Bridges vanilla mouse handling to [WheelState]:
+ * - feeds per-frame mouse deltas for the sector selection
+ * - swallows clicks while the wheel is open
+ * - locks the camera while the wheel is open
+ */
 @Mixin(MouseHandler.class)
 public abstract class MixinMouseHandler {
 
@@ -21,8 +27,10 @@ public abstract class MixinMouseHandler {
     @Shadow
     private double accumulatedDY;
 
-    @Inject(method = "onMove", at = @At("RETURN"))
-    private void commandwheel$onMove(long window, double x, double y, CallbackInfo ci) {
+    @Inject(method = "handleAccumulatedMovement", at = @At("HEAD"))
+    private void commandwheel$onFrame(CallbackInfo ci) {
+        // handleAccumulatedMovement runs once per frame and resets accumulatedDX/DY
+        // at its end, so sampling here yields exactly this frame's mouse delta.
         WheelState.INSTANCE.onMouseMoved(this.accumulatedDX, this.accumulatedDY);
     }
 
@@ -38,6 +46,7 @@ public abstract class MixinMouseHandler {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V")
     )
     private void commandwheel$turn(LocalPlayer player, double x, double y, Operation<Void> original) {
+        // pass a zero delta instead of cancelling so vanilla keeps its own reset logic intact
         if (WheelState.INSTANCE.isCameraLocked()) {
             original.call(player, 0.0D, 0.0D);
         } else {

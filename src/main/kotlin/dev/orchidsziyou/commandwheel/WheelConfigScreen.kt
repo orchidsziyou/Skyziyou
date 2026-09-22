@@ -18,7 +18,11 @@ import org.lwjgl.glfw.GLFW
 class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
 
     private val slotBoxes = mutableListOf<EditBox>()
+
+    /** Rebuilt in [init]; kept here so the keybind listener can update its label. */
     private lateinit var keybindWidget: Button
+
+    /** While true, the next key press or mouse click is captured as the new keybind. */
     private var listeningForKey = false
 
     override fun init() {
@@ -88,6 +92,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
             box.setMaxLength(32)
             box.value = WheelConfig.slots[i]
             box.setHint(Component.literal(WheelState.SECTOR_NAMES[i]))
+            // live-apply the text so edits take effect without pressing Done
             box.setResponder { value -> WheelConfig.slots[i] = value }
             slotBoxes.add(box)
             addRenderableWidget(box)
@@ -109,6 +114,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
     override fun keyPressed(event: KeyEvent): Boolean {
         val keyCode = event.key()
         if (listeningForKey) {
+            // ESC cancels the binding instead of setting it; any other key is captured
             if (keyCode != GLFW.GLFW_KEY_ESCAPE) {
                 WheelConfig.keybind = keyCode
             }
@@ -122,6 +128,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
         val button = event.button()
         if (listeningForKey) {
+            // mouse buttons 0-7 are valid keybinds too, so clicks are captured as well
             WheelConfig.keybind = button
             listeningForKey = false
             keybindWidget.message = keybindLabel()
@@ -130,11 +137,13 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         return super.mouseClicked(event, doubleClick)
     }
 
+    /** Widgets write straight into [WheelConfig]; persist everything when leaving the screen. */
     override fun onClose() {
         WheelConfig.save()
         super.onClose()
     }
 
+    /** Button caption showing the current keybind, or "not set" when unbound. */
     private fun keybindLabel(): Component {
         val key = WheelConfig.keybind
         val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
@@ -146,6 +155,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         return Component.literal("Wheel Keybind: $name")
     }
 
+    /** Creates an ON/OFF button that flips its captured value and writes through [onChange]. */
     private fun toggleButton(label: String, initial: Boolean, x: Int, y: Int, w: Int, onChange: (Boolean) -> Unit): Button {
         var value = initial
         fun text() = Component.literal("$label: ${if (value) "ON" else "OFF"}")
@@ -156,6 +166,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         }.bounds(x, y, w, 20).build()
     }
 
+    /** Creates a slider mapping the 0-1 handle position onto [min, max], writing the rounded value through [onChange]. */
     private fun slider(label: String, current: Int, min: Int, max: Int, x: Int, y: Int, w: Int, onChange: (Int) -> Unit): AbstractSliderButton {
         val initial = (current.coerceIn(min, max) - min).toDouble() / (max - min)
         return object : AbstractSliderButton(x, y, w, 20, Component.empty(), initial) {

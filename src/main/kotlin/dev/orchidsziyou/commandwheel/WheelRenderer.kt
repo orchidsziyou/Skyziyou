@@ -18,6 +18,7 @@ object WheelRenderer {
     private val id: Identifier = Identifier.fromNamespaceAndPath("commandwheel", "wheel")
     private val backgroundColor: Int = Color(0, 0, 0, 140).rgb
 
+    /** Registers the HUD element; the wheel is only drawn while it is open. */
     fun register() {
         HudElementRegistry.addLast(id) { graphics, _ ->
             if (WheelState.isOpen) render(graphics)
@@ -28,6 +29,7 @@ object WheelRenderer {
         val mc = Minecraft.getInstance()
         val centerX = mc.window.guiScaledWidth / 2
         val centerY = mc.window.guiScaledHeight / 2
+        // all geometry is defined at base size and scaled by "Wheel Size %"
         val scale = WheelConfig.sizePercent / 100.0
         val radius = (WheelState.BASE_WHEEL_RADIUS * scale).toInt()
         val labelRadius = (WheelState.BASE_LABEL_RADIUS * scale).toInt()
@@ -54,6 +56,7 @@ object WheelRenderer {
                 pose.popMatrix()
             }
 
+            // one label per sector, placed on a circle; -90 degrees puts index 0 (Up) at the top
             val commands = WheelState.slotCommands
             commands.forEachIndexed { index, command ->
                 val angleRad = Math.toRadians(-90.0 + index * WheelState.SECTOR_ANGLE)
@@ -65,6 +68,7 @@ object WheelRenderer {
                 drawText(x.toFloat(), y.toFloat(), text)
             }
 
+            // center shows the selected entry, or a usage hint while nothing is selected
             val selectedCommand = WheelState.selectedSector?.let { commands.getOrNull(it) }
             val hint = if (WheelConfig.executeOnRelease) "§7Release key to run" else "§7Left click to run"
             val centerText = selectedCommand?.let { "§e§l$it" } ?: hint
