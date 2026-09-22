@@ -1,0 +1,30 @@
+{
+    "schemaVersion": 1,
+    "id": "commandwheel",
+    "version": "1.0.0",
+    "name": "Command Wheel",
+    "description": "Hold a keybind to open a radial command wheel. Move the mouse into a direction and left click (or release the key) to run a command or send a chat message.",
+    "authors": [
+        "orchidsziyou"
+    ],
+    "license": "MIT",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            {
+                "value": "dev.orchidsziyou.commandwheel.CommandWheelMod",
+                "adapter": "kotlin"
+            }
+        ]
+    },
+    "mixins": [
+        "commandwheel.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=0.19.0",
+        "fabric-api": "*",
+        "fabric-language-kotlin": ">=1.13.0",
+        "minecraft": "~26.1",
+        "java": ">=25"
+    }
+}
