@@ -30,6 +30,7 @@ Designed for scenarios that require frequent command input (such as `/ah`, `/bz`
   - **Vanilla mouse clicks are swallowed** while the wheel is open — no accidental attacks or block placements
   - Right click cancels anytime; the wheel auto-closes after a configurable timeout
 - **Built-in settings screen**: type `/commandwheel` or `/cwh` in game; changes apply instantly and are saved on close
+- **Custom key shortcuts**: bind any key (including mouse buttons, e.g. numpad 2) directly to a command or chat message and run it with a single press — configure via "Custom Shortcuts..." in the settings; each shortcut can be toggled on/off individually, and key conflicts are flagged in red
 
 ## Requirements
 
@@ -57,7 +58,8 @@ Client-side only; servers do not need to install anything.
 3. Fill in the 8 input boxes with the command or message for each direction (leave a slot empty to disable it)
 4. Hold the trigger key to open the wheel → flick the mouse toward a direction → left click (or release the key) to run it
 5. Right click, or wait for the timeout, to close without running anything
-6. All settings are stored in `.minecraft/config/commandwheel.json`; edit it manually if needed, or delete the file to reset
+6. Extra direct shortcuts: click "Custom Shortcuts..." in the settings, add a row and bind a key with a command (e.g. numpad 2 → `/is`)
+7. All settings are stored in `.minecraft/config/commandwheel.json`; edit it manually if needed, or delete the file to reset
 
 ## Building from Source
 

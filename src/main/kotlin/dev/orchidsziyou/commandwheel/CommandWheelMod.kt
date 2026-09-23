@@ -14,9 +14,10 @@ object CommandWheelMod : ClientModInitializer {
         // HUD element that draws the wheel while it is open
         WheelRenderer.register()
 
-        // drive the wheel state machine once per client tick
+        // drive the wheel state machine and the custom shortcuts once per client tick
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             WheelState.onTick()
+            Shortcuts.onTick()
         }
 
         // /commandwheel and /cwh both open the settings screen

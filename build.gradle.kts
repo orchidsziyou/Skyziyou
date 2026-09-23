@@ -5,10 +5,10 @@ plugins {
 }
 
 group = "dev.orchidsziyou"
-version = "1.0.0"
+version = "1.1.0"
 
 base {
-    archivesName.set("CommandWheel")
+    archivesName.set("CommandWheel-Fabric+mc26.1")
 }
 
 java {

@@ -98,6 +98,13 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
             addRenderableWidget(box)
         }
 
+        // opens the custom key shortcut editor (the right column is free below the slot boxes)
+        addRenderableWidget(
+            Button.builder(Component.literal("Custom Shortcuts...")) {
+                minecraft?.setScreen(ShortcutsScreen())
+            }.bounds(width / 2 + 10, startY + rowH * 4, 200, 20).build(),
+        )
+
         addRenderableWidget(
             Button.builder(Component.literal("Done")) { onClose() }
                 .bounds(width / 2 - 100, height - 30, 200, 20)

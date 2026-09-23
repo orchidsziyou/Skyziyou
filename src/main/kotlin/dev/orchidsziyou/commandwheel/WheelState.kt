@@ -60,6 +60,9 @@ object WheelState {
     /** While the wheel is open the camera must not move (see MixinMouseHandler#turnPlayer). */
     fun isCameraLocked(): Boolean = isOpen
 
+    /** Current pressed state of a GLFW mouse button, as recorded from the input mixin. */
+    fun isMouseButtonDown(button: Int): Boolean = mouseDown[button] == true
+
     /**
      * Called every frame from MixinMouseHandler#handleAccumulatedMovement with the
      * current frame's mouse delta (vanilla resets its accumulator each frame, so
@@ -136,7 +139,7 @@ object WheelState {
 
     /**
      * Closes the wheel and, when [execute] is set, runs the entry of the selected sector.
-     * Does nothing if the selected slot is empty or the player is gone.
+     * Does nothing if the selected slot is empty.
      */
     private fun close(execute: Boolean) {
         isOpen = false
@@ -144,17 +147,27 @@ object WheelState {
         selectedSector = null
         if (!execute) return
         val command = sector?.let { slotCommands.getOrNull(it) } ?: return
+        executeEntry(command)
+    }
+
+    /**
+     * Runs one entry: text starting with '/' is executed as a command, anything else
+     * is sent as a chat message. Shared by the wheel and the custom shortcuts.
+     */
+    fun executeEntry(entry: String) {
+        val command = entry.trim()
+        if (command.isEmpty()) return
         val player = mc.player ?: return
         // entries starting with '/' are executed as commands, anything else is sent as a chat message
         if (command.startsWith("/")) {
             player.connection.sendCommand(command.substring(1))
             if (WheelConfig.showLogMessage) {
-                localChat("§7Command wheel ran: §e$command")
+                localChat("§7Executed: §e$command")
             }
         } else {
             player.connection.sendChat(command)
             if (WheelConfig.showLogMessage) {
-                localChat("§7Command wheel sent: §e$command")
+                localChat("§7Sent: §e$command")
             }
         }
     }

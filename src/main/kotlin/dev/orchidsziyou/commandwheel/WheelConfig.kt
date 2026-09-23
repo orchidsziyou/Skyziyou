@@ -7,6 +7,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
+/** One custom shortcut: a key (GLFW keycode, 0-7 = mouse button) bound to a command or chat message. */
+class ShortcutEntry(
+    var key: Int = GLFW.GLFW_KEY_UNKNOWN,
+    var command: String = "",
+    var enabled: Boolean = true,
+)
+
 /**
  * Simple JSON-backed config, stored in `.minecraft/config/commandwheel.json`.
  * Entries starting with '/' are executed as commands, anything else is sent as a chat message.
@@ -43,6 +50,9 @@ object WheelConfig {
         "/bz", "", "", "",
     )
 
+    /** Custom key shortcuts; pressing the bound key runs the entry immediately. */
+    val shortcuts: MutableList<ShortcutEntry> = mutableListOf()
+
     private val file: Path
         get() = FabricLoader.getInstance().configDir.resolve("commandwheel.json")
 
@@ -72,6 +82,17 @@ object WheelConfig {
                     slots[i] = array[i].asString
                 }
             }
+            // custom shortcuts; malformed entries are skipped entirely
+            obj.getAsJsonArray("shortcuts")?.let { array ->
+                shortcuts.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: GLFW.GLFW_KEY_UNKNOWN
+                    val command = entry.get("command")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    val enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+                    shortcuts.add(ShortcutEntry(key, command, enabled))
+                }
+            }
         }.onFailure { it.printStackTrace() }
     }
 
@@ -94,6 +115,15 @@ object WheelConfig {
             val array = com.google.gson.JsonArray()
             slots.forEach { array.add(it) }
             obj.add("slots", array)
+            val shortcutArray = com.google.gson.JsonArray()
+            shortcuts.forEach { shortcut ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("key", shortcut.key)
+                entryObj.addProperty("command", shortcut.command)
+                entryObj.addProperty("enabled", shortcut.enabled)
+                shortcutArray.add(entryObj)
+            }
+            obj.add("shortcuts", shortcutArray)
 
             Files.createDirectories(file.parent)
             val tmp = file.resolveSibling("commandwheel.json.tmp")
