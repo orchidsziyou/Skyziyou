@@ -15,6 +15,20 @@ class ShortcutEntry(
 )
 
 /**
+ * One custom chat rule: when [pattern] is found in a chat line of the restricted
+ * [channel] (a [com.skyziyou.features.chat.ChatChannel] name), [action] is sent
+ * (leading slash = command, otherwise chat). [regex] switches [pattern] from
+ * case-insensitive contains matching to full regex matching.
+ */
+class ChatRuleEntry(
+    var enabled: Boolean = true,
+    var pattern: String = "",
+    var action: String = "",
+    var channel: String = "ANY",
+    var regex: Boolean = false,
+)
+
+/**
  * Simple JSON-backed config, stored in `.minecraft/config/skyziyou.json`.
  * Entries starting with '/' are executed as commands, anything else is sent as a chat message.
  */
@@ -52,6 +66,18 @@ object SkyziyouConfig {
 
     /** Custom key shortcuts; pressing the bound key runs the entry immediately. */
     val shortcuts: MutableList<ShortcutEntry> = mutableListOf()
+
+    /** Custom Chat Rules master switch. */
+    var chatRulesEnabled: Boolean = true
+
+    /** Print a local chat line whenever a chat rule fires. */
+    var chatRulesLog: Boolean = true
+
+    /** Only evaluate rules while connected to Hypixel (checked via server brand). */
+    var chatRulesHypixelOnly: Boolean = true
+
+    /** User-defined chat match -> action rules; see [ChatRuleEntry]. */
+    val chatRules: MutableList<ChatRuleEntry> = mutableListOf()
 
     /** Auto Party Invite master switch: a PM containing only "!invite" runs "/p <sender>". */
     var autoInviteEnabled: Boolean = true
@@ -111,6 +137,27 @@ object SkyziyouConfig {
                     shortcuts.add(ShortcutEntry(key, command, enabled))
                 }
             }
+            // custom chat rules; malformed entries are skipped entirely
+            prim("chatRulesEnabled")?.let { chatRulesEnabled = it.asBoolean }
+            prim("chatRulesLog")?.let { chatRulesLog = it.asBoolean }
+            prim("chatRulesHypixelOnly")?.let { chatRulesHypixelOnly = it.asBoolean }
+            obj.getAsJsonArray("chatRules")?.let { array ->
+                chatRules.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    fun str(name: String) = entry.get(name)?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    fun bool(name: String, default: Boolean) =
+                        entry.get(name)?.takeIf { it.isJsonPrimitive }?.asBoolean ?: default
+                    val rule = ChatRuleEntry(
+                        enabled = bool("enabled", true),
+                        pattern = str("pattern"),
+                        action = str("action"),
+                        channel = str("channel").ifBlank { "ANY" },
+                        regex = bool("regex", false),
+                    )
+                    chatRules.add(rule)
+                }
+            }
         }.onFailure { it.printStackTrace() }
     }
 
@@ -158,6 +205,20 @@ object SkyziyouConfig {
                 shortcutArray.add(entryObj)
             }
             obj.add("shortcuts", shortcutArray)
+            obj.addProperty("chatRulesEnabled", chatRulesEnabled)
+            obj.addProperty("chatRulesLog", chatRulesLog)
+            obj.addProperty("chatRulesHypixelOnly", chatRulesHypixelOnly)
+            val chatRuleArray = com.google.gson.JsonArray()
+            chatRules.forEach { rule ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("enabled", rule.enabled)
+                entryObj.addProperty("pattern", rule.pattern)
+                entryObj.addProperty("action", rule.action)
+                entryObj.addProperty("channel", rule.channel)
+                entryObj.addProperty("regex", rule.regex)
+                chatRuleArray.add(entryObj)
+            }
+            obj.add("chatRules", chatRuleArray)
 
             Files.createDirectories(file.parent)
             val tmp = file.resolveSibling("skyziyou.json.tmp")
