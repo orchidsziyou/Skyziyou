@@ -49,6 +49,7 @@ object SkyziyouMod : ClientModInitializer {
 
     private fun openConfigScreen(mc: Minecraft) {
         // command handlers may not run on render thread, so hop over via execute
-        mc.execute { mc.setScreen(ConfigScreen()) }
+        //~ if < 26.2 'mc.gui.setScreen' -> 'mc.setScreen'
+        mc.execute { mc.gui.setScreen(ConfigScreen()) }
     }
 }

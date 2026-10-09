@@ -29,7 +29,8 @@ object Shortcuts {
         val active = SkyziyouConfig.enabled &&
             !WheelState.isOpen &&
             mc.player != null &&
-            mc.screen == null
+            //~ if < 26.2 'mc.gui.screen()' -> 'mc.screen'
+            mc.gui.screen() == null
 
         if (active) {
             for (entry in entries) {

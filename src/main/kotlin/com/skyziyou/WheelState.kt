@@ -86,7 +86,8 @@ object WheelState {
         if (!isOpen) return false
         // releasing the trigger itself must reach vanilla, otherwise the key would stick
         if (button == boundTriggerMouseButton() && action == GLFW.GLFW_RELEASE) return false
-        if (mc.screen != null) return false
+        //~ if < 26.2 'mc.gui.screen()' -> 'mc.screen'
+        if (mc.gui.screen() != null) return false
         // swallow releases of buttons whose press was swallowed while the wheel was open
         if (action != GLFW.GLFW_PRESS) return true
         when (button) {
@@ -101,7 +102,8 @@ object WheelState {
         val down = isTriggerDown()
         if (isOpen) {
             // world left or another screen opened: always close without running anything
-            if (mc.player == null || mc.screen != null) {
+            //~ if < 26.2 'mc.gui.screen()' -> 'mc.screen'
+            if (mc.player == null || mc.gui.screen() != null) {
                 close(execute = false)
                 wasTriggerDown = down
                 return
@@ -122,7 +124,8 @@ object WheelState {
             return
         }
         // press edge detection: only the tick the trigger is first pressed opens the wheel
-        if (down && !wasTriggerDown && canOpen && mc.screen == null && mc.player != null) {
+        //~ if < 26.2 'mc.gui.screen()' -> 'mc.screen'
+        if (down && !wasTriggerDown && canOpen && mc.gui.screen() == null && mc.player != null) {
             open()
         }
         wasTriggerDown = down

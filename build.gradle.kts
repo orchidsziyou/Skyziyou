@@ -1,14 +1,28 @@
+// Shared build script for every Stonecutter version node (":26.1", ":26.2").
+// Node project directories live under versions/<node> and only hold version-specific
+// files (fabric.mod.json); all shared sources stay in the root src/ folder.
+val node = project.path.removePrefix(":")
+
+// Exact Maven versions per node. 26.1 publishes patch versions (26.1.2), while the
+// 26.2 line is referenced without a patch suffix.
+val minecraftVersion = when (node) {
+    "26.1" -> "26.1.2"
+    "26.2" -> "26.2"
+    else -> error("Unknown Stonecutter version node: '${project.path}'")
+}
+val fabricApiVersion = "0.155.2+$minecraftVersion"
+
 plugins {
     java
-    id("net.fabricmc.fabric-loom") version "1.17.17"
-    kotlin("jvm") version "2.4.10"
+    id("net.fabricmc.fabric-loom")
+    kotlin("jvm")
 }
 
 group = "com.skyziyou"
 version = "1.1.0"
 
 base {
-    archivesName.set("Skyziyou-Fabric+mc26.1")
+    archivesName.set("Skyziyou-Fabric+mc$node")
 }
 
 java {
@@ -21,21 +35,9 @@ kotlin {
     }
 }
 
-repositories {
-    mavenCentral()
-    exclusiveContent {
-        forRepository { maven("https://maven.fabricmc.net") }
-        filter { includeGroupAndSubgroups("net.fabricmc") }
-    }
-    exclusiveContent {
-        forRepository { maven("https://repo.spongepowered.org/maven/") }
-        filter { includeGroup("org.spongepowered") }
-    }
-}
-
 dependencies {
-    minecraft("com.mojang:minecraft:26.1.2")
+    minecraft("com.mojang:minecraft:$minecraftVersion")
     implementation("net.fabricmc:fabric-loader:0.19.3")
-    implementation("net.fabricmc.fabric-api:fabric-api:0.155.2+26.1.2")
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
     implementation("net.fabricmc:fabric-language-kotlin:1.13.13+kotlin.2.4.10")
 }

@@ -3,7 +3,7 @@
     "id": "skyziyou",
     "version": "1.0.0",
     "name": "Skyziyou",
-    "description": "Hold a keybind to open a radial command wheel. Move the mouse into a direction and left click (or release the key) to run a command or send a chat message.",
+    "description": "Hypixel SkyBlock utility mod: radial command wheel, auto party invites and custom chat rules.",
     "authors": [
         "orchidsziyou"
     ],

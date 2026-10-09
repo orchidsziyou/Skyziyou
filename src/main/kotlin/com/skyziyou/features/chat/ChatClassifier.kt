@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FormattedText
 import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.TextColor
 import java.util.Optional
 
 /**
@@ -170,8 +171,10 @@ object ChatClassifier {
     /** ChatFormatting declaration order maps directly to the legacy code chars. */
     private val legacyByRgb: Map<Int, Char> = buildMap {
         val chars = "0123456789abcdef"
+        // TextColor.fromLegacyFormat exists on both 26.1 and 26.2; in 26.2 ChatFormatting
+        // itself no longer carries the RGB int (it moved onto TextColor).
         ChatFormatting.values().take(16).forEachIndexed { index, formatting ->
-            formatting.color?.let { put(it, chars[index]) }
+            TextColor.fromLegacyFormat(formatting)?.getValue()?.let { put(it, chars[index]) }
         }
     }
 }

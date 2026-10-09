@@ -50,7 +50,8 @@ class ConfigScreen : Screen(Component.literal("Skyziyou Settings")) {
         categories.forEachIndexed { index, category ->
             addRenderableWidget(
                 Button.builder(Component.literal(category.label)) {
-                    minecraft.setScreen(category.factory())
+                    //~ if < 26.2 'minecraft.gui.setScreen' -> 'minecraft.setScreen'
+                    minecraft.gui.setScreen(category.factory())
                 }.bounds(x, startY + index * rowH, colW, 20).build(),
             )
         }
@@ -84,7 +85,8 @@ abstract class BaseConfigScreen(title: Component) : Screen(title) {
 
     override fun onClose() {
         SkyziyouConfig.save()
-        minecraft.setScreen(ConfigScreen())
+        //~ if < 26.2 'minecraft.gui.setScreen' -> 'minecraft.setScreen'
+        minecraft.gui.setScreen(ConfigScreen())
     }
 
     /** Adds the standard bottom-centre Back button that closes into the category menu. */
