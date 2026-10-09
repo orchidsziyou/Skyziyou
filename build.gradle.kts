@@ -4,11 +4,11 @@ plugins {
     kotlin("jvm") version "2.4.10"
 }
 
-group = "dev.orchidsziyou"
+group = "com.skyziyou"
 version = "1.1.0"
 
 base {
-    archivesName.set("CommandWheel-Fabric+mc26.1")
+    archivesName.set("Skyziyou-Fabric+mc26.1")
 }
 
 java {

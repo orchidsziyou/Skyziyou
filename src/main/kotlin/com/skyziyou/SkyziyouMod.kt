@@ -1,16 +1,17 @@
-﻿package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
+import com.skyziyou.features.party.AutoInviteFeature
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 
-object CommandWheelMod : ClientModInitializer {
+object SkyziyouMod : ClientModInitializer {
 
     override fun onInitializeClient() {
         // config must be loaded before anything reads it
-        WheelConfig.load()
+        SkyziyouConfig.load()
         // HUD element that draws the wheel while it is open
         WheelRenderer.register()
 
@@ -20,16 +21,19 @@ object CommandWheelMod : ClientModInitializer {
             Shortcuts.onTick()
         }
 
-        // /commandwheel and /cwh both open the settings screen
+        // independent features register their own chat/tick hooks
+        AutoInviteFeature.register()
+
+        // /skyziyou and /sz both open the settings category screen
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
-                ClientCommands.literal("commandwheel").executes { ctx ->
+                ClientCommands.literal("skyziyou").executes { ctx ->
                     openConfigScreen(ctx.source.client)
                     1
                 },
             )
             dispatcher.register(
-                ClientCommands.literal("cwh").executes { ctx ->
+                ClientCommands.literal("sz").executes { ctx ->
                     openConfigScreen(ctx.source.client)
                     1
                 },
@@ -38,7 +42,7 @@ object CommandWheelMod : ClientModInitializer {
     }
 
     private fun openConfigScreen(mc: Minecraft) {
-        // command handlers may not run on the render thread, so hop over via execute
-        mc.execute { mc.setScreen(WheelConfigScreen()) }
+        // command handlers may not run on render thread, so hop over via execute
+        mc.execute { mc.setScreen(ConfigScreen()) }
     }
 }

@@ -1,4 +1,4 @@
-﻿package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
 import com.google.gson.JsonParser
 import org.lwjgl.glfw.GLFW
@@ -15,10 +15,10 @@ class ShortcutEntry(
 )
 
 /**
- * Simple JSON-backed config, stored in `.minecraft/config/commandwheel.json`.
+ * Simple JSON-backed config, stored in `.minecraft/config/skyziyou.json`.
  * Entries starting with '/' are executed as commands, anything else is sent as a chat message.
  */
-object WheelConfig {
+object SkyziyouConfig {
 
     /** GLFW keycode of the wheel trigger; GLFW_KEY_UNKNOWN (-1) means unbound. Mouse buttons 0-7 are also allowed. */
     var keybind: Int = GLFW.GLFW_KEY_UNKNOWN
@@ -53,7 +53,20 @@ object WheelConfig {
     /** Custom key shortcuts; pressing the bound key runs the entry immediately. */
     val shortcuts: MutableList<ShortcutEntry> = mutableListOf()
 
+    /** Auto Party Invite master switch: a PM containing only "!invite" runs "/p <sender>". */
+    var autoInviteEnabled: Boolean = true
+
+    /** Print a local chat line whenever Auto Party Invite sends an invite. */
+    var autoInviteLog: Boolean = true
+
+    /** Only react to private messages while connected to Hypixel (checked via server brand). */
+    var autoInviteHypixelOnly: Boolean = true
+
     private val file: Path
+        get() = FabricLoader.getInstance().configDir.resolve("skyziyou.json")
+
+    /** Config left behind by the mod's former name; renamed into [file] on first launch. */
+    private val legacyFile: Path
         get() = FabricLoader.getInstance().configDir.resolve("commandwheel.json")
 
     /**
@@ -61,6 +74,7 @@ object WheelConfig {
      * defaults; IO errors are swallowed so the game can always start.
      */
     fun load() {
+        migrateLegacyConfig()
         runCatching {
             if (!Files.exists(file)) return
             val obj = JsonParser.parseString(Files.readString(file)).asJsonObject
@@ -82,6 +96,10 @@ object WheelConfig {
                     slots[i] = array[i].asString
                 }
             }
+            // auto party invite feature
+            prim("autoInviteEnabled")?.let { autoInviteEnabled = it.asBoolean }
+            prim("autoInviteLog")?.let { autoInviteLog = it.asBoolean }
+            prim("autoInviteHypixelOnly")?.let { autoInviteHypixelOnly = it.asBoolean }
             // custom shortcuts; malformed entries are skipped entirely
             obj.getAsJsonArray("shortcuts")?.let { array ->
                 shortcuts.clear()
@@ -94,6 +112,19 @@ object WheelConfig {
                 }
             }
         }.onFailure { it.printStackTrace() }
+    }
+
+    /**
+     * One-time migration from the mod's former name: when no skyziyou.json exists yet
+     * but a commandwheel.json does, rename it so existing wheel slots and shortcuts
+     * carry over. Failures are ignored; [load] then simply falls back to defaults.
+     */
+    private fun migrateLegacyConfig() {
+        runCatching {
+            if (!Files.exists(file) && Files.exists(legacyFile)) {
+                Files.move(legacyFile, file)
+            }
+        }
     }
 
     /**
@@ -115,6 +146,9 @@ object WheelConfig {
             val array = com.google.gson.JsonArray()
             slots.forEach { array.add(it) }
             obj.add("slots", array)
+            obj.addProperty("autoInviteEnabled", autoInviteEnabled)
+            obj.addProperty("autoInviteLog", autoInviteLog)
+            obj.addProperty("autoInviteHypixelOnly", autoInviteHypixelOnly)
             val shortcutArray = com.google.gson.JsonArray()
             shortcuts.forEach { shortcut ->
                 val entryObj = com.google.gson.JsonObject()
@@ -126,7 +160,7 @@ object WheelConfig {
             obj.add("shortcuts", shortcutArray)
 
             Files.createDirectories(file.parent)
-            val tmp = file.resolveSibling("commandwheel.json.tmp")
+            val tmp = file.resolveSibling("skyziyou.json.tmp")
             Files.writeString(tmp, com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(obj))
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING)
         }.onFailure { it.printStackTrace() }

@@ -1,4 +1,4 @@
-package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.input.KeyEvent
@@ -6,16 +6,15 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
 /**
- * Editor for the custom key shortcuts. Each row binds a key to a command or chat
- * message; rows scroll when the list is longer than the screen fits.
- * Changes are applied instantly and saved when the screen is closed.
+ * "Custom Shortcuts" editor sub-page, reached from the [ConfigScreen] category menu.
+ * Each row binds a key to a command or chat message; rows scroll when the list is
+ * longer than the screen fits. Changes are applied instantly and saved on close.
  */
-class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
+class ShortcutsScreen : BaseConfigScreen(Component.literal("Custom Shortcuts")) {
 
     private var scroll = 0
 
@@ -27,11 +26,11 @@ class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
 
     private fun visibleRows(): Int = ((height - startY - 60) / rowH).coerceAtLeast(1)
 
-    private fun maxScroll(): Int = (WheelConfig.shortcuts.size - visibleRows()).coerceAtLeast(0)
+    private fun maxScroll(): Int = (SkyziyouConfig.shortcuts.size - visibleRows()).coerceAtLeast(0)
 
     override fun init() {
         val left = width / 2 - 190
-        val entries = WheelConfig.shortcuts
+        val entries = SkyziyouConfig.shortcuts
         scroll = scroll.coerceIn(0, maxScroll())
 
         // one row per shortcut: [keybind button][on/off toggle][command input][delete]
@@ -81,7 +80,7 @@ class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
             }.bounds(width / 2 - 100, height - 55, 200, 20).build(),
         )
         addRenderableWidget(
-            Button.builder(Component.literal("Done")) { onClose() }
+            Button.builder(Component.literal("Back")) { onClose() }
                 .bounds(width / 2 - 100, height - 30, 200, 20)
                 .build(),
         )
@@ -116,7 +115,7 @@ class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
         if (listeningIndex >= 0) {
             // ESC cancels the binding instead of setting it; any other key is captured
             if (keyCode != GLFW.GLFW_KEY_ESCAPE) {
-                WheelConfig.shortcuts.getOrNull(listeningIndex)?.key = keyCode
+                SkyziyouConfig.shortcuts.getOrNull(listeningIndex)?.key = keyCode
             }
             listeningIndex = -1
             rebuildWidgets()
@@ -129,7 +128,7 @@ class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
         val button = event.button()
         if (listeningIndex >= 0) {
             // mouse buttons 0-7 are valid keybinds too, so clicks are captured as well
-            WheelConfig.shortcuts.getOrNull(listeningIndex)?.key = button
+            SkyziyouConfig.shortcuts.getOrNull(listeningIndex)?.key = button
             listeningIndex = -1
             rebuildWidgets()
             return true
@@ -137,23 +136,17 @@ class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
         return super.mouseClicked(event, doubleClick)
     }
 
-    override fun onClose() {
-        WheelConfig.save()
-        // go back to the main settings screen instead of leaving the game menu
-        minecraft?.setScreen(WheelConfigScreen())
-    }
-
     /** True when an enabled shortcut shares its key with another one or with the wheel trigger. */
     private fun hasConflicts(): Boolean {
-        val keys = WheelConfig.shortcuts.filter { it.enabled && it.key != GLFW.GLFW_KEY_UNKNOWN }.map { it.key }
-        return keys.size != keys.distinct().size || keys.any { it == WheelConfig.keybind }
+        val keys = SkyziyouConfig.shortcuts.filter { it.enabled && it.key != GLFW.GLFW_KEY_UNKNOWN }.map { it.key }
+        return keys.size != keys.distinct().size || keys.any { it == SkyziyouConfig.keybind }
     }
 
     private fun toggleLabel(entry: ShortcutEntry): Component =
         Component.literal(if (entry.enabled) "§aON" else "§cOFF")
 
     private fun keybindLabel(index: Int): Component {
-        val entry = WheelConfig.shortcuts[index]
+        val entry = SkyziyouConfig.shortcuts[index]
         val key = entry.key
         val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
             "not set"
@@ -164,8 +157,8 @@ class ShortcutsScreen : Screen(Component.literal("Command Wheel Shortcuts")) {
         var label = "Key: $name"
         // flag keys that will not trigger or that clash with another enabled shortcut
         if (key != GLFW.GLFW_KEY_UNKNOWN) {
-            val duplicated = WheelConfig.shortcuts.any { it !== entry && it.enabled && it.key == key }
-            if (key == WheelConfig.keybind || duplicated) label += " §c⚠"
+            val duplicated = SkyziyouConfig.shortcuts.any { it !== entry && it.enabled && it.key == key }
+            if (key == SkyziyouConfig.keybind || duplicated) label += " §c⚠"
         }
         return Component.literal(label)
     }

@@ -1,4 +1,4 @@
-package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
@@ -18,7 +18,7 @@ object Shortcuts {
 
     /** Called once per client tick from the mod entrypoint. */
     fun onTick() {
-        val entries = WheelConfig.shortcuts
+        val entries = SkyziyouConfig.shortcuts
 
         // update pressed states first so edges are not lost while a screen is open
         val down = HashMap<Int, Boolean>()
@@ -26,7 +26,7 @@ object Shortcuts {
             if (entry.enabled && entry.key != GLFW.GLFW_KEY_UNKNOWN) down[entry.key] = isDown(entry.key)
         }
 
-        val active = WheelConfig.enabled &&
+        val active = SkyziyouConfig.enabled &&
             !WheelState.isOpen &&
             mc.player != null &&
             mc.screen == null
@@ -37,7 +37,7 @@ object Shortcuts {
                 val pressed = down[entry.key] == true
                 val justPressed = pressed && wasDown[entry.key] != true
                 // skip the wheel trigger key so holding it cannot fire a shortcut too
-                if (justPressed && entry.key != WheelConfig.keybind && entry.command.isNotBlank()) {
+                if (justPressed && entry.key != SkyziyouConfig.keybind && entry.command.isNotBlank()) {
                     WheelState.executeEntry(entry.command)
                 }
             }

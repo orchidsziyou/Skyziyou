@@ -1,4 +1,4 @@
-﻿package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
@@ -39,11 +39,11 @@ object WheelState {
 
     /** The 8 slot entries, trimmed; empty slots become null so they cannot be executed. */
     val slotCommands: List<String?>
-        get() = WheelConfig.slots.map { it.trim().takeIf { command -> command.isNotEmpty() } }
+        get() = SkyziyouConfig.slots.map { it.trim().takeIf { command -> command.isNotEmpty() } }
 
     /** Opening the wheel is pointless when it is disabled or every slot is empty. */
     private val canOpen: Boolean
-        get() = WheelConfig.enabled && slotCommands.any { it != null }
+        get() = SkyziyouConfig.enabled && slotCommands.any { it != null }
 
     var isOpen = false
         private set
@@ -108,12 +108,12 @@ object WheelState {
             }
             // trigger released: run the selection only in "Execute On Release" mode
             if (!down) {
-                close(execute = WheelConfig.executeOnRelease && selectedSector != null)
+                close(execute = SkyziyouConfig.executeOnRelease && selectedSector != null)
                 wasTriggerDown = false
                 return
             }
             // held too long: cancel so a forgotten wheel can never misfire later
-            if (System.currentTimeMillis() - openTime > WheelConfig.timeoutSeconds * 1000L) {
+            if (System.currentTimeMillis() - openTime > SkyziyouConfig.timeoutSeconds * 1000L) {
                 close(execute = false)
                 wasTriggerDown = down
                 return
@@ -161,12 +161,12 @@ object WheelState {
         // entries starting with '/' are executed as commands, anything else is sent as a chat message
         if (command.startsWith("/")) {
             player.connection.sendCommand(command.substring(1))
-            if (WheelConfig.showLogMessage) {
+            if (SkyziyouConfig.showLogMessage) {
                 localChat("§7Executed: §e$command")
             }
         } else {
             player.connection.sendChat(command)
-            if (WheelConfig.showLogMessage) {
+            if (SkyziyouConfig.showLogMessage) {
                 localChat("§7Sent: §e$command")
             }
         }
@@ -178,14 +178,14 @@ object WheelState {
 
     /** True while the trigger is held; mouse buttons come from [mouseDown], keyboard keys are polled directly. */
     private fun isTriggerDown(): Boolean {
-        val key = WheelConfig.keybind
+        val key = SkyziyouConfig.keybind
         if (key == GLFW.GLFW_KEY_UNKNOWN) return false  // unbound
         if (key in 0..7) return mouseDown[key] == true  // 0-7 is a mouse button
         return InputConstants.isKeyDown(mc.window, key) // otherwise a keyboard keycode
     }
 
     /** GLFW button number when the trigger key is bound to a mouse button, otherwise null. */
-    private fun boundTriggerMouseButton(): Int? = WheelConfig.keybind.takeIf { it in 0..7 }
+    private fun boundTriggerMouseButton(): Int? = SkyziyouConfig.keybind.takeIf { it in 0..7 }
 
     /**
      * Maps the accumulated mouse movement to a sector index (0-7), or null while the
@@ -193,7 +193,7 @@ object WheelState {
      */
     private fun computeSelectedSector(): Int? {
         val distance = sqrt(movedX * movedX + movedY * movedY)
-        if (distance < WheelConfig.deadZone) return null
+        if (distance < SkyziyouConfig.deadZone) return null
         // Screen coordinates have y pointing down, so angle 0 is right and -90 is up.
         val angle = Math.toDegrees(atan2(movedY, movedX))
         val normalized = (angle + 90.0 + SECTOR_ANGLE / 2).mod(360.0)

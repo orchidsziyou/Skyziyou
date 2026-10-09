@@ -1,4 +1,4 @@
-package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
 import net.minecraft.client.Minecraft
@@ -15,7 +15,7 @@ import kotlin.math.sqrt
  */
 object WheelRenderer {
 
-    private val id: Identifier = Identifier.fromNamespaceAndPath("commandwheel", "wheel")
+    private val id: Identifier = Identifier.fromNamespaceAndPath("skyziyou", "wheel")
     private val backgroundColor: Int = Color(0, 0, 0, 140).rgb
 
     /** Registers the HUD element; the wheel is only drawn while it is open. */
@@ -30,7 +30,7 @@ object WheelRenderer {
         val centerX = mc.window.guiScaledWidth / 2
         val centerY = mc.window.guiScaledHeight / 2
         // all geometry is defined at base size and scaled by "Wheel Size %"
-        val scale = WheelConfig.sizePercent / 100.0
+        val scale = SkyziyouConfig.sizePercent / 100.0
         val radius = (WheelState.BASE_WHEEL_RADIUS * scale).toInt()
         val labelRadius = (WheelState.BASE_LABEL_RADIUS * scale).toInt()
 
@@ -45,7 +45,7 @@ object WheelRenderer {
             }
 
             val font = mc.font
-            val fontScale = WheelConfig.fontScalePercent / 100.0f
+            val fontScale = SkyziyouConfig.fontScalePercent / 100.0f
 
             // draw text centered at (x, y) with the configured font scale
             fun drawText(x: Float, y: Float, text: String) {
@@ -70,7 +70,7 @@ object WheelRenderer {
 
             // center shows the selected entry, or a usage hint while nothing is selected
             val selectedCommand = WheelState.selectedSector?.let { commands.getOrNull(it) }
-            val hint = if (WheelConfig.executeOnRelease) "§7Release key to run" else "§7Left click to run"
+            val hint = if (SkyziyouConfig.executeOnRelease) "§7Release key to run" else "§7Left click to run"
             val centerText = selectedCommand?.let { "§e§l$it" } ?: hint
             drawText(0f, 0f, centerText)
         } finally {

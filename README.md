@@ -1,12 +1,10 @@
-# Command Wheel（指令轮盘）
+# Skyziyou
 
 [English](./README_EN.md) | 简体中文
 
 > 本模组为 AI 辅助生成，如有介意请勿使用。
 
-本模组为Minecraft Fabric端模组：按住一个自定义按键即可在屏幕中央打开一个 8 方位的轮盘，鼠标向某个方向滑动选中扇区，然后左键点击（或松开按键）即可快速执行预设指令或发送聊天消息。
-
-本模组适用于需要频繁输入指令的场景（如 Hypixel SkyBlock 里的 `/ah`、`/bz`、`/hub` 等）。
+本模组为 Minecraft Fabric 端多功能辅助模组（主要用于 Hypixel SkyBlock）：按住一个自定义按键即可在屏幕中央打开一个 8 方位的指令轮盘，鼠标向某个方向滑动选中扇区，然后左键点击（或松开按键）即可快速执行预设指令或发送聊天消息；此外还包含私信自动邀请等独立功能。
 
 ## 界面预览
 
@@ -29,8 +27,9 @@
   - 轮盘打开时自动**锁定视角**，移动鼠标选扇区不会转动镜头
   - 轮盘打开期间**吞掉原版鼠标点击**，不会误攻击/误放方块
   - 右键随时取消关闭；超时（可配置）自动关闭
-- **内置设置界面**：游戏内输入 `/commandwheel` 或 `/cwh` 打开，所有改动即时生效、关闭时自动保存
-- **自定义快捷键**：任意按键（含鼠标键，如小键盘 2）可直接绑定一条指令或消息，按下立即执行，在设置界面点击 "Custom Shortcuts..." 配置；每条可单独启用/停用，按键冲突会标红提示
+- **内置分类设置界面**：游戏内输入 `/skyziyou` 或 `/sz` 打开，各功能位于独立子页面，所有改动即时生效、关闭时自动保存
+- **自定义快捷键**：任意按键（含鼠标键，如小键盘 2）可直接绑定一条指令或消息，按下立即执行，在 "Custom Shortcuts" 子页面配置；每条可单独启用/停用，按键冲突会标红提示
+- **Auto Party Invite**：收到内容为 `!invite` 的 Hypixel 私信时自动执行 `/p <玩家>`（同玩家 60 秒冷却、命令间隔 1 秒排队）
 
 ## 环境要求
 
@@ -53,19 +52,19 @@
 
 ## 使用方法
 
-1. 游戏内输入 `/commandwheel`（简写 `/cwh`）打开设置界面
-2. 点击 **Wheel Keybind** 按钮后按下任意键（或鼠标键）绑定触发键
+1. 游戏内输入 `/skyziyou`（简写 `/sz`）打开设置分类界面
+2. 进入 **Command Wheel** 子页面，点击 **Wheel Keybind** 按钮后按下任意键（或鼠标键）绑定触发键
 3. 在右侧 8 个输入框中填入各方位要执行的指令或消息（留空表示该方位不可用）
 4. 按住触发键打开轮盘 → 鼠标滑向目标方位 → 左键点击（或松开按键）执行
 5. 右键点击或不做操作等待超时，则直接关闭不执行任何内容
-6. 额外的按键直达指令：在设置界面点击 "Custom Shortcuts..."，添加一行并绑定按键、填入指令（如小键盘 2 → `/is`）
-7. 所有设置保存在 `.minecraft/config/commandwheel.json`，可手动编辑，删除该文件即可重置
+6. 额外的按键直达指令：进入 "Custom Shortcuts" 子页面，添加一行并绑定按键、填入指令（如小键盘 2 → `/is`）
+7. 所有设置保存在 `.minecraft/config/skyziyou.json`，可手动编辑，删除该文件即可重置
 
 ## 从源码构建
 
 ```powershell
-git clone https://github.com/orchidsziyou/CommandWheel.git
-cd CommandWheel
+git clone https://github.com/orchidsziyou/Skyziyou.git
+cd Skyziyou
 
 # Windows (PowerShell)
 .\gradlew.bat build
@@ -80,17 +79,23 @@ cd CommandWheel
 
 ```
 src/main/
-├── java/dev/orchidsziyou/commandwheel/mixin/
-│   └── MixinMouseHandler.java   # Mixin：锁定视角、吞掉点击、采集鼠标位移
-├── kotlin/dev/orchidsziyou/commandwheel/
-│   ├── CommandWheelMod.kt       # 模组入口：初始化配置/渲染器/每 tick 状态机
-│   ├── WheelState.kt            # 核心状态机：打开/选中/关闭/执行
-│   ├── WheelRenderer.kt         # HUD 渲染：扫描线圆盘 + 文字标签
-│   ├── WheelConfig.kt           # JSON 配置读写（原子写入）
-│   └── WheelConfigScreen.kt     # 游戏内设置界面
+├── java/com/skyziyou/mixin/
+│   ├── MixinMouseHandler.java                 # Mixin：锁定视角、吞掉点击、采集鼠标位移
+│   └── ClientCommonPacketListenerAccessor.java # 读取服务器品牌（Hypixel 检测）
+├── kotlin/com/skyziyou/
+│   ├── SkyziyouMod.kt          # 模组入口：初始化配置/渲染器/事件注册
+│   ├── ConfigScreen.kt         # 设置分类主页 + BaseConfigScreen 基类
+│   ├── WheelState.kt           # 轮盘核心状态机：打开/选中/关闭/执行
+│   ├── WheelRenderer.kt        # HUD 渲染：扫描线圆盘 + 文字标签
+│   ├── SkyziyouConfig.kt       # JSON 配置读写（原子写入、旧配置自动迁移）
+│   ├── WheelConfigScreen.kt    # Command Wheel 子页面
+│   ├── Shortcuts.kt / ShortcutsScreen.kt      # 自定义按键快捷键
+│   └── features/party/
+│       ├── AutoInviteFeature.kt       # 私信 !invite 自动邀请
+│       └── AutoInviteConfigScreen.kt  # 该功能的设置子页面
 └── resources/
     ├── fabric.mod.json          # 模组元数据
-    └── commandwheel.mixins.json # Mixin 配置
+    └── skyziyou.mixins.json     # Mixin 配置
 ```
 
 ## 许可证

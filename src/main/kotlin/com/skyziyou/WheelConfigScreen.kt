@@ -1,4 +1,4 @@
-﻿package dev.orchidsziyou.commandwheel
+package com.skyziyou
 
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.input.KeyEvent
@@ -7,15 +7,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.AbstractSliderButton
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
 /**
- * Minimal in-game settings screen, opened via the /commandwheel or /cwh client command.
- * Changes are applied instantly and saved on close.
+ * "Command Wheel" settings sub-page, reached from the [ConfigScreen] category menu.
+ * Changes are applied instantly and saved on close ([BaseConfigScreen]).
  */
-class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
+class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
 
     private val slotBoxes = mutableListOf<EditBox>()
 
@@ -42,44 +41,44 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         addRenderableWidget(keybindWidget)
 
         addRenderableWidget(
-            toggleButton("Enabled", WheelConfig.enabled, left, startY + rowH, colW) { WheelConfig.enabled = it },
+            toggleButton("Enabled", SkyziyouConfig.enabled, left, startY + rowH, colW) { SkyziyouConfig.enabled = it },
         )
         addRenderableWidget(
             toggleButton(
                 "Execute On Release",
-                WheelConfig.executeOnRelease,
+                SkyziyouConfig.executeOnRelease,
                 left,
                 startY + rowH * 2,
                 colW,
-            ) { WheelConfig.executeOnRelease = it },
+            ) { SkyziyouConfig.executeOnRelease = it },
         )
         addRenderableWidget(
             toggleButton(
                 "Execution Log",
-                WheelConfig.showLogMessage,
+                SkyziyouConfig.showLogMessage,
                 left,
                 startY + rowH * 3,
                 colW,
-            ) { WheelConfig.showLogMessage = it },
+            ) { SkyziyouConfig.showLogMessage = it },
         )
         addRenderableWidget(
-            slider("Dead Zone", WheelConfig.deadZone, 10, 150, left, startY + rowH * 4, colW) {
-                WheelConfig.deadZone = it
+            slider("Dead Zone", SkyziyouConfig.deadZone, 10, 150, left, startY + rowH * 4, colW) {
+                SkyziyouConfig.deadZone = it
             },
         )
         addRenderableWidget(
-            slider("Wheel Size %", WheelConfig.sizePercent, 50, 200, left, startY + rowH * 5, colW) {
-                WheelConfig.sizePercent = it
+            slider("Wheel Size %", SkyziyouConfig.sizePercent, 50, 200, left, startY + rowH * 5, colW) {
+                SkyziyouConfig.sizePercent = it
             },
         )
         addRenderableWidget(
-            slider("Font Size %", WheelConfig.fontScalePercent, 50, 200, left, startY + rowH * 6, colW) {
-                WheelConfig.fontScalePercent = it
+            slider("Font Size %", SkyziyouConfig.fontScalePercent, 50, 200, left, startY + rowH * 6, colW) {
+                SkyziyouConfig.fontScalePercent = it
             },
         )
         addRenderableWidget(
-            slider("Timeout s", WheelConfig.timeoutSeconds, 3, 30, left, startY + rowH * 7, colW) {
-                WheelConfig.timeoutSeconds = it
+            slider("Timeout s", SkyziyouConfig.timeoutSeconds, 3, 30, left, startY + rowH * 7, colW) {
+                SkyziyouConfig.timeoutSeconds = it
             },
         )
 
@@ -90,26 +89,15 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
             val x = if (i % 2 == 0) right else rightMid
             val box = EditBox(font, x, startY + row * rowH, halfW, 20, Component.empty())
             box.setMaxLength(32)
-            box.value = WheelConfig.slots[i]
+            box.value = SkyziyouConfig.slots[i]
             box.setHint(Component.literal(WheelState.SECTOR_NAMES[i]))
             // live-apply the text so edits take effect without pressing Done
-            box.setResponder { value -> WheelConfig.slots[i] = value }
+            box.setResponder { value -> SkyziyouConfig.slots[i] = value }
             slotBoxes.add(box)
             addRenderableWidget(box)
         }
 
-        // opens the custom key shortcut editor (the right column is free below the slot boxes)
-        addRenderableWidget(
-            Button.builder(Component.literal("Custom Shortcuts...")) {
-                minecraft?.setScreen(ShortcutsScreen())
-            }.bounds(width / 2 + 10, startY + rowH * 4, 200, 20).build(),
-        )
-
-        addRenderableWidget(
-            Button.builder(Component.literal("Done")) { onClose() }
-                .bounds(width / 2 - 100, height - 30, 200, 20)
-                .build(),
-        )
+        addBackButton()
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -123,7 +111,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         if (listeningForKey) {
             // ESC cancels the binding instead of setting it; any other key is captured
             if (keyCode != GLFW.GLFW_KEY_ESCAPE) {
-                WheelConfig.keybind = keyCode
+                SkyziyouConfig.keybind = keyCode
             }
             listeningForKey = false
             keybindWidget.message = keybindLabel()
@@ -136,7 +124,7 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         val button = event.button()
         if (listeningForKey) {
             // mouse buttons 0-7 are valid keybinds too, so clicks are captured as well
-            WheelConfig.keybind = button
+            SkyziyouConfig.keybind = button
             listeningForKey = false
             keybindWidget.message = keybindLabel()
             return true
@@ -144,15 +132,9 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
         return super.mouseClicked(event, doubleClick)
     }
 
-    /** Widgets write straight into [WheelConfig]; persist everything when leaving the screen. */
-    override fun onClose() {
-        WheelConfig.save()
-        super.onClose()
-    }
-
     /** Button caption showing the current keybind, or "not set" when unbound. */
     private fun keybindLabel(): Component {
-        val key = WheelConfig.keybind
+        val key = SkyziyouConfig.keybind
         val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
             "not set"
         } else {
@@ -160,17 +142,6 @@ class WheelConfigScreen : Screen(Component.literal("Command Wheel Settings")) {
             type.getOrCreate(key).displayName.string
         }
         return Component.literal("Wheel Keybind: $name")
-    }
-
-    /** Creates an ON/OFF button that flips its captured value and writes through [onChange]. */
-    private fun toggleButton(label: String, initial: Boolean, x: Int, y: Int, w: Int, onChange: (Boolean) -> Unit): Button {
-        var value = initial
-        fun text() = Component.literal("$label: ${if (value) "ON" else "OFF"}")
-        return Button.builder(text()) { button ->
-            value = !value
-            onChange(value)
-            button.message = text()
-        }.bounds(x, y, w, 20).build()
     }
 
     /** Creates a slider mapping the 0-1 handle position onto [min, max], writing the rounded value through [onChange]. */

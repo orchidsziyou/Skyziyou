@@ -1,8 +1,9 @@
 {
     "required": true,
-    "package": "dev.orchidsziyou.commandwheel.mixin",
+    "package": "com.skyziyou.mixin",
     "compatibilityLevel": "JAVA_21",
     "client": [
+        "ClientCommonPacketListenerAccessor",
         "MixinMouseHandler"
     ],
     "injectors": {
