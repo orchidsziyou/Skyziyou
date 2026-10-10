@@ -4,7 +4,7 @@ English | [简体中文](./README.md)
 
 > This mod was generated with AI assistance; please do not use it if that bothers you.
 
-A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold a customizable key to open an 8-direction radial wheel in the center of the screen, flick the mouse toward a direction to select a sector, then left click (or release the key) to quickly run a preset command or send a chat message. It also ships custom key shortcuts, user-defined command aliases, chat rules that trigger actions per chat channel, and automatic party invites via private messages. Both **Minecraft 26.1 and 26.2** are supported — a single source tree builds a separate jar for each version.
+A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold a customizable key to open an 8-direction radial wheel in the center of the screen, flick the mouse toward a direction to select a sector, then left click (or release the key) to quickly run a preset command or send a chat message. It also ships custom key shortcuts, user-defined command aliases, chat rules that trigger actions per chat channel, an automatic party-chat report of mineshaft corpse counts when entering a Glacial Tunnels mineshaft, and automatic party invites via private messages. Both **Minecraft 26.1 and 26.2** are supported — a single source tree builds a separate jar for each version.
 
 ## Screenshots
 
@@ -39,6 +39,10 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Placeholders: `[player]` = the sender's name, `[me]` = your own name; regex rules additionally support `$1`–`$9` capture-group substitution
   - Channel prefixes are recognized by the server-sent section colour codes, so players cannot fake party/guild lines by typing them
   - Every rule has a 3s cooldown, all actions go through a global queue throttled to one message per second (cleared on disconnect), and rules can be restricted to Hypixel only
+- **Mineshaft Corpse Report**: right after entering a Glacial Tunnels mineshaft, reads the "Frozen Corpses" section of the tab list and sends the corpse counts per type to party chat once — configured in the "Mineshaft Corpses" sub-page
+  - Example: `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard` (types: Lapis / Tungsten / Umber / Vanguard)
+  - Data comes straight from tab text — **no entity scanning and no view-distance dependence**; the message is sent within about a second of the shaft loading, exactly once per mineshaft, and rearms only after leaving
+  - Master switch and a Hypixel-only option (both enabled by default)
 - **Auto Party Invite**: when a Hypixel private message contains exactly `!invite`, automatically runs `/p <player>` (60s per-player cooldown, commands queued 1s apart)
 
 ## Requirements
@@ -70,8 +74,9 @@ Client-side only; servers do not need to install anything.
 6. Extra direct shortcuts: open the "Custom Shortcuts" sub-page, add a row and bind a key with a command (e.g. numpad 2 → `/is`)
 7. Command aliases: open the "Command Aliases" sub-page; each row is **command you type → what actually runs**, e.g. `/home` → `/warp base`. A target without a leading `/` is sent as chat
 8. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
-9. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
-10. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
+9. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
+10. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
+11. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
 
 ## Building from Source
 
@@ -120,6 +125,8 @@ src/main/
 │       │   └── ChatRulesFeature.kt / ChatRulesScreen.kt
 │       ├── command/            # Custom command aliases (typed-command rewrite)
 │       │   └── CommandAliases.kt / CommandAliasesScreen.kt
+│       ├── mineshaft/          # Reads tab corpse widget on shaft entry, reports via /pc
+│       │   └── MineshaftCorpseReporter.kt / MineshaftCorpseScreen.kt
 │       └── party/
 │           ├── AutoInviteFeature.kt        # !invite PM auto party invite
 │           └── AutoInviteConfigScreen.kt   # Settings sub-page for that feature

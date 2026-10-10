@@ -4,7 +4,7 @@
 
 > 本模组为 AI 辅助生成，如有介意请勿使用。
 
-本模组为 Minecraft Fabric 端多功能辅助模组（主要用于 Hypixel SkyBlock）：按住一个自定义按键即可在屏幕中央打开一个 8 方位的指令轮盘，鼠标向某个方向滑动选中扇区，然后左键点击（或松开按键）即可快速执行预设指令或发送聊天消息；此外还包含自定义快捷键、自定义命令别名、按聊天频道自动触发动作的自定义聊天规则、私信自动邀请等独立功能。支持 **Minecraft 26.1 与 26.2**，两个版本由同一份源码构建、分别发布对应 jar。
+本模组为 Minecraft Fabric 端多功能辅助模组（主要用于 Hypixel SkyBlock）：按住一个自定义按键即可在屏幕中央打开一个 8 方位的指令轮盘，鼠标向某个方向滑动选中扇区，然后左键点击（或松开按键）即可快速执行预设指令或发送聊天消息；此外还包含自定义快捷键、自定义命令别名、按聊天频道自动触发动作的自定义聊天规则、进入冰川矿井时自动向队伍频道播报尸体数量与类别、私信自动邀请等独立功能。支持 **Minecraft 26.1 与 26.2**，两个版本由同一份源码构建、分别发布对应 jar。
 
 ## 界面预览
 
@@ -39,6 +39,10 @@
   - 占位符：`[player]` = 发送者昵称、`[me]` = 自己的昵称；正则模式额外支持 `$1`–`$9` 捕获组替换
   - 频道前缀按服务器下发的 § 颜色码识别，玩家无法通过打字伪造队伍 / 公会消息触发规则
   - 每条规则 3 秒冷却，所有动作经全局队列按 1 秒一条限速发送（断线自动清空），可限定仅 Hypixel 生效
+- **Mineshaft Corpse Report（矿井尸体播报）**：进入 Glacial Tunnels 矿井后，读取 Tab 列表中的 "Frozen Corpses" 区块，自动向队伍频道发送一次各类尸体的数量，在 "Mineshaft Corpses" 子页面配置
+  - 示例：`/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`（类别：Lapis / Tungsten / Umber / Vanguard）
+  - 数据直接来自 Tab 文本，**不扫描实体、不受视距影响**，进入矿井加载完成后约 1 秒内发送；每个矿井只播报一次，离开后再次进入才会重新播报
+  - 总开关、仅 Hypixel 生效选项（均默认开启）
 - **Auto Party Invite**：收到内容为 `!invite` 的 Hypixel 私信时自动执行 `/p <玩家>`（同玩家 60 秒冷却、命令间隔 1 秒排队）
 
 ## 环境要求
@@ -70,8 +74,9 @@
 6. 额外的按键直达指令：进入 "Custom Shortcuts" 子页面，添加一行并绑定按键、填入指令（如小键盘 2 → `/is`）
 7. 命令别名：进入 "Command Aliases" 子页面，每行填 **你输入的命令 → 实际执行的内容**，例如 `/home` → `/warp base`；第二框不带 `/` 时会改发聊天消息
 8. 自动聊天规则：进入 "Custom Chat Rules" 子页面，每行依次填写 **匹配文本 → 动作（`/` 开头为指令）→ 频道 → 包含/正则模式**，可用 `[player]`、`[me]`、`$1`–`$9` 占位符
-9. 私信 `!invite` 自动邀请默认开启，可在 "Auto Party Invite" 子页面关闭或调整为不限服务器
-10. 所有设置保存在 `.minecraft/config/skyziyou.json`，可手动编辑，删除该文件即可重置（旧版 `commandwheel.json` 会在首次启动时自动迁移）
+9. 矿井尸体播报默认开启：进入冰川矿井后会自动用 `/pc` 发出尸体数量与类别，可在 "Mineshaft Corpses" 子页面关闭或调整为不限服务器
+10. 私信 `!invite` 自动邀请默认开启，可在 "Auto Party Invite" 子页面关闭或调整为不限服务器
+11. 所有设置保存在 `.minecraft/config/skyziyou.json`，可手动编辑，删除该文件即可重置（旧版 `commandwheel.json` 会在首次启动时自动迁移）
 
 ## 从源码构建
 
@@ -120,6 +125,8 @@ src/main/
 │       │   └── ChatRulesFeature.kt / ChatRulesScreen.kt
 │       ├── command/            # 自定义命令别名（手输命令改写）
 │       │   └── CommandAliases.kt / CommandAliasesScreen.kt
+│       ├── mineshaft/          # 进入矿井后读取 Tab 尸体信息并 /pc 播报
+│       │   └── MineshaftCorpseReporter.kt / MineshaftCorpseScreen.kt
 │       └── party/
 │           ├── AutoInviteFeature.kt        # 私信 !invite 自动邀请
 │           └── AutoInviteConfigScreen.kt   # 该功能的设置子页面

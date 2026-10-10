@@ -2,6 +2,7 @@ package com.skyziyou
 
 import com.skyziyou.features.chat.ChatRulesScreen
 import com.skyziyou.features.command.CommandAliasesScreen
+import com.skyziyou.features.mineshaft.MineshaftCorpseScreen
 import com.skyziyou.features.party.AutoInviteConfigScreen
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Button
@@ -40,6 +41,10 @@ class ConfigScreen : Screen(Component.literal("Skyziyou Settings")) {
             "Command Aliases",
             "Rewrite a command you type into another command or chat message.",
         ) { CommandAliasesScreen() },
+        Category(
+            "Mineshaft Corpses",
+            "Report frozen corpse counts to party chat when entering a mineshaft.",
+        ) { MineshaftCorpseScreen() },
         Category(
             "Auto Party Invite",
             "Automatically invite players that PM you !invite.",

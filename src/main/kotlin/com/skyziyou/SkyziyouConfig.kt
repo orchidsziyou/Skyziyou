@@ -109,6 +109,12 @@ object SkyziyouConfig {
     /** User-defined typed-command -> real command/chat aliases; see [CommandAliasEntry]. */
     val aliases: MutableList<CommandAliasEntry> = mutableListOf()
 
+    /** Mineshaft corpse party-chat report master switch. */
+    var corpseReportEnabled: Boolean = true
+
+    /** Only send the corpse report while connected to Hypixel (checked via server brand). */
+    var corpseReportHypixelOnly: Boolean = true
+
     private val file: Path
         get() = FabricLoader.getInstance().configDir.resolve("skyziyou.json")
 
@@ -179,6 +185,9 @@ object SkyziyouConfig {
                     chatRules.add(rule)
                 }
             }
+            // mineshaft corpse report
+            prim("corpseReportEnabled")?.let { corpseReportEnabled = it.asBoolean }
+            prim("corpseReportHypixelOnly")?.let { corpseReportHypixelOnly = it.asBoolean }
             // custom command aliases; malformed entries are skipped entirely
             prim("aliasesEnabled")?.let { aliasesEnabled = it.asBoolean }
             prim("aliasesLog")?.let { aliasesLog = it.asBoolean }
@@ -256,6 +265,8 @@ object SkyziyouConfig {
                 chatRuleArray.add(entryObj)
             }
             obj.add("chatRules", chatRuleArray)
+            obj.addProperty("corpseReportEnabled", corpseReportEnabled)
+            obj.addProperty("corpseReportHypixelOnly", corpseReportHypixelOnly)
             obj.addProperty("aliasesEnabled", aliasesEnabled)
             obj.addProperty("aliasesLog", aliasesLog)
             val aliasArray = com.google.gson.JsonArray()
