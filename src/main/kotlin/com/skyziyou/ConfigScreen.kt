@@ -1,6 +1,7 @@
 package com.skyziyou
 
 import com.skyziyou.features.chat.ChatRulesScreen
+import com.skyziyou.features.command.CommandAliasesScreen
 import com.skyziyou.features.party.AutoInviteConfigScreen
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Button
@@ -35,6 +36,10 @@ class ConfigScreen : Screen(Component.literal("Skyziyou Settings")) {
             "Custom Chat Rules",
             "Match chat text per channel and auto-send replies or commands.",
         ) { ChatRulesScreen() },
+        Category(
+            "Command Aliases",
+            "Rewrite a command you type into another command or chat message.",
+        ) { CommandAliasesScreen() },
         Category(
             "Auto Party Invite",
             "Automatically invite players that PM you !invite.",

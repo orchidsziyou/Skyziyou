@@ -29,6 +29,18 @@ class ChatRuleEntry(
 )
 
 /**
+ * One command alias: typing exactly "/<[alias]>" (the stored value may include the
+ * leading slash) runs [target] instead — a command when it starts with '/',
+ * otherwise a chat message. Matching is exact and case-insensitive; extra arguments
+ * are not forwarded.
+ */
+class CommandAliasEntry(
+    var enabled: Boolean = true,
+    var alias: String = "",
+    var target: String = "",
+)
+
+/**
  * Simple JSON-backed config, stored in `.minecraft/config/skyziyou.json`.
  * Entries starting with '/' are executed as commands, anything else is sent as a chat message.
  */
@@ -87,6 +99,15 @@ object SkyziyouConfig {
 
     /** Only react to private messages while connected to Hypixel (checked via server brand). */
     var autoInviteHypixelOnly: Boolean = true
+
+    /** Custom Command Aliases master switch. */
+    var aliasesEnabled: Boolean = true
+
+    /** Print a local chat line whenever a command alias rewrites a typed command. */
+    var aliasesLog: Boolean = true
+
+    /** User-defined typed-command -> real command/chat aliases; see [CommandAliasEntry]. */
+    val aliases: MutableList<CommandAliasEntry> = mutableListOf()
 
     private val file: Path
         get() = FabricLoader.getInstance().configDir.resolve("skyziyou.json")
@@ -158,6 +179,22 @@ object SkyziyouConfig {
                     chatRules.add(rule)
                 }
             }
+            // custom command aliases; malformed entries are skipped entirely
+            prim("aliasesEnabled")?.let { aliasesEnabled = it.asBoolean }
+            prim("aliasesLog")?.let { aliasesLog = it.asBoolean }
+            obj.getAsJsonArray("aliases")?.let { array ->
+                aliases.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    fun str(name: String) = entry.get(name)?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    val alias = CommandAliasEntry(
+                        enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true,
+                        alias = str("alias"),
+                        target = str("target"),
+                    )
+                    aliases.add(alias)
+                }
+            }
         }.onFailure { it.printStackTrace() }
     }
 
@@ -219,6 +256,17 @@ object SkyziyouConfig {
                 chatRuleArray.add(entryObj)
             }
             obj.add("chatRules", chatRuleArray)
+            obj.addProperty("aliasesEnabled", aliasesEnabled)
+            obj.addProperty("aliasesLog", aliasesLog)
+            val aliasArray = com.google.gson.JsonArray()
+            aliases.forEach { alias ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("enabled", alias.enabled)
+                entryObj.addProperty("alias", alias.alias)
+                entryObj.addProperty("target", alias.target)
+                aliasArray.add(entryObj)
+            }
+            obj.add("aliases", aliasArray)
 
             Files.createDirectories(file.parent)
             val tmp = file.resolveSibling("skyziyou.json.tmp")

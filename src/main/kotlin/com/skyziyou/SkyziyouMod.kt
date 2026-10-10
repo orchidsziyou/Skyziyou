@@ -3,6 +3,7 @@ package com.skyziyou
 import com.skyziyou.features.ActionQueue
 import com.skyziyou.features.chat.ChatClassifier
 import com.skyziyou.features.chat.ChatRulesFeature
+import com.skyziyou.features.command.CommandAliases
 import com.skyziyou.features.party.AutoInviteFeature
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
@@ -29,6 +30,7 @@ object SkyziyouMod : ClientModInitializer {
         ActionQueue.register()
         ChatRulesFeature.register()
         AutoInviteFeature.register()
+        CommandAliases.register()
 
         // /skyziyou and /sz both open the settings category screen
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->

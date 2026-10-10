@@ -4,7 +4,7 @@ English | [简体中文](./README.md)
 
 > This mod was generated with AI assistance; please do not use it if that bothers you.
 
-A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold a customizable key to open an 8-direction radial wheel in the center of the screen, flick the mouse toward a direction to select a sector, then left click (or release the key) to quickly run a preset command or send a chat message. It also ships custom key shortcuts, user-defined chat rules that trigger actions per chat channel, and automatic party invites via private messages. Both **Minecraft 26.1 and 26.2** are supported — a single source tree builds a separate jar for each version.
+A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold a customizable key to open an 8-direction radial wheel in the center of the screen, flick the mouse toward a direction to select a sector, then left click (or release the key) to quickly run a preset command or send a chat message. It also ships custom key shortcuts, user-defined command aliases, chat rules that trigger actions per chat channel, and automatic party invites via private messages. Both **Minecraft 26.1 and 26.2** are supported — a single source tree builds a separate jar for each version.
 
 ## Screenshots
 
@@ -29,6 +29,10 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Right click cancels anytime; the wheel auto-closes after a configurable timeout
 - **Built-in category settings menu**: type `/skyziyou` or `/sz` in game; every feature has its own sub-page, changes apply instantly and are saved on close
 - **Custom key shortcuts**: bind any key (including mouse buttons, e.g. numpad 2) directly to a command or chat message and run it with a single press — configured in the "Custom Shortcuts" sub-page; each shortcut can be toggled on/off individually, and key conflicts are flagged in red
+- **Custom Command Aliases**: rewrite a command you type into another command or a chat message — configured in the "Command Aliases" sub-page, two boxes per row
+  - First box: the command you type (with or without the leading `/`, e.g. `/home`); second box: what actually runs (`/` prefix = command, otherwise chat)
+  - **Exact match only** (case-insensitive): typing the alias with extra arguments does not match and the original command is sent unchanged
+  - Master switch, per-row on/off toggle, and an optional local log line whenever a command is rewritten
 - **Custom Chat Rules**: match incoming chat lines by channel (ANY / party / guild / all chat / private message / system) and automatically send a reply or run a command — configured in the "Custom Chat Rules" sub-page
   - Matching: case-insensitive contains matching, or full regex matching (an invalid regex is reported once and then disabled automatically)
   - Actions starting with `/` run as commands; everything else is sent as a chat message
@@ -64,9 +68,10 @@ Client-side only; servers do not need to install anything.
 4. Hold the trigger key to open the wheel → flick the mouse toward a direction → left click (or release the key) to run it
 5. Right click, or wait for the timeout, to close without running anything
 6. Extra direct shortcuts: open the "Custom Shortcuts" sub-page, add a row and bind a key with a command (e.g. numpad 2 → `/is`)
-7. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
-8. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
-9. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
+7. Command aliases: open the "Command Aliases" sub-page; each row is **command you type → what actually runs**, e.g. `/home` → `/warp base`. A target without a leading `/` is sent as chat
+8. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
+9. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
+10. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
 
 ## Building from Source
 
@@ -113,6 +118,8 @@ src/main/
 │       ├── chat/               # Unified chat channel classifier + custom chat rules
 │       │   ├── ChatChannel.kt / ChatClassifier.kt
 │       │   └── ChatRulesFeature.kt / ChatRulesScreen.kt
+│       ├── command/            # Custom command aliases (typed-command rewrite)
+│       │   └── CommandAliases.kt / CommandAliasesScreen.kt
 │       └── party/
 │           ├── AutoInviteFeature.kt        # !invite PM auto party invite
 │           └── AutoInviteConfigScreen.kt   # Settings sub-page for that feature
