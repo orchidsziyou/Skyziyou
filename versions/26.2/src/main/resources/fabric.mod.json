@@ -1,7 +1,7 @@
 {
     "schemaVersion": 1,
     "id": "skyziyou",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "name": "Skyziyou",
     "description": "Hypixel SkyBlock utility mod: radial command wheel, key shortcuts, custom chat rules, command aliases, mineshaft corpse reports and auto party invites.",
     "authors": [
