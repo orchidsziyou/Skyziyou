@@ -40,9 +40,9 @@
   - 频道前缀按服务器下发的 § 颜色码识别，玩家无法通过打字伪造队伍 / 公会消息触发规则
   - 每条规则 3 秒冷却，所有动作经全局队列按 1 秒一条限速发送（断线自动清空），可限定仅 Hypixel 生效
 - **Mineshaft Corpse Report（矿井尸体播报）**：进入 Glacial Tunnels 矿井后，读取 Tab 列表中的 "Frozen Corpses" 区块，自动向队伍频道发送一次各类尸体的数量，在 "Mineshaft Corpses" 子页面配置
-  - 示例：`/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`（类别：Lapis / Tungsten / Umber / Vanguard）
+  - 详细格式（默认）：`/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`；简略格式：`/pc Corpses (4): 2l 1u 1vg`（l/t/u/vg 分别为 Lapis/Tungsten/Umber/Vanguard，只列出该矿井存在的类别）
   - 数据直接来自 Tab 文本，**不扫描实体、不受视距影响**，进入矿井加载完成后约 1 秒内发送；每个矿井只播报一次，离开后再次进入才会重新播报
-  - 总开关、仅 Hypixel 生效选项（均默认开启）
+  - 总开关、仅 Hypixel 生效、详细/简略格式选项（总开关默认开启，默认详细格式）
 - **Auto Party Invite**：收到内容为 `!invite` 的 Hypixel 私信时自动执行 `/p <玩家>`（同玩家 60 秒冷却、命令间隔 1 秒排队）
 
 ## 环境要求

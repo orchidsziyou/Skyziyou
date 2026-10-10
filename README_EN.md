@@ -40,9 +40,9 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Channel prefixes are recognized by the server-sent section colour codes, so players cannot fake party/guild lines by typing them
   - Every rule has a 3s cooldown, all actions go through a global queue throttled to one message per second (cleared on disconnect), and rules can be restricted to Hypixel only
 - **Mineshaft Corpse Report**: right after entering a Glacial Tunnels mineshaft, reads the "Frozen Corpses" section of the tab list and sends the corpse counts per type to party chat once — configured in the "Mineshaft Corpses" sub-page
-  - Example: `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard` (types: Lapis / Tungsten / Umber / Vanguard)
+  - Detailed (default): `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`; brief: `/pc Corpses (4): 2l 1u 1vg` (l/t/u/vg = Lapis/Tungsten/Umber/Vanguard; only types present in the shaft are listed)
   - Data comes straight from tab text — **no entity scanning and no view-distance dependence**; the message is sent within about a second of the shaft loading, exactly once per mineshaft, and rearms only after leaving
-  - Master switch and a Hypixel-only option (both enabled by default)
+  - Master switch, Hypixel-only restriction and detailed/brief format toggle (enabled by default, detailed format by default)
 - **Auto Party Invite**: when a Hypixel private message contains exactly `!invite`, automatically runs `/p <player>` (60s per-player cooldown, commands queued 1s apart)
 
 ## Requirements

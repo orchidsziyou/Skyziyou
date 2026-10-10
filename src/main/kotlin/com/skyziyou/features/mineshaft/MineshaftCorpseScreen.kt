@@ -31,6 +31,13 @@ class MineshaftCorpseScreen : BaseConfigScreen(Component.literal("Mineshaft Corp
                 x, startY + rowH, colW,
             ) { SkyziyouConfig.corpseReportHypixelOnly = it },
         )
+        addRenderableWidget(
+            toggleButton(
+                "Detailed Format",
+                SkyziyouConfig.corpseReportDetailed,
+                x, startY + rowH * 2, colW,
+            ) { SkyziyouConfig.corpseReportDetailed = it },
+        )
 
         addBackButton()
     }
@@ -43,10 +50,11 @@ class MineshaftCorpseScreen : BaseConfigScreen(Component.literal("Mineshaft Corp
             "§7Reads the §fFrozen Corpses §7tab widget right after entering a mineshaft",
             "§7and sends the corpse counts to party chat once via §f/pc§7.",
             "",
-            "§7Example: §f/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard",
-            "§7Types: §9Lapis §7· §8Tungsten §7· §6Umber §7· §fVanguard",
+            "§7Detailed: §f/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard",
+            "§7Brief:    §f/pc Corpses (4): 2l 1u 1vg",
+            "§7Tokens: §9l §7=Lapis  §8t §7=Tungsten  §6u §7=Umber  §fvg §7=Vanguard",
         )
-        var y = height - 82
+        var y = height - 90
         for (line in lines) {
             graphics.text(font, line, width / 2 - font.width(line) / 2, y, -1, false)
             y += 12

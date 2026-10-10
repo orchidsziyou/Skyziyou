@@ -25,6 +25,9 @@ object MineshaftCorpseReporter {
     /** Corpse types in canonical display order. */
     private val types = listOf("Lapis", "Tungsten", "Umber", "Vanguard")
 
+    /** Short tokens used by the brief message format: Lapis -> l, Vanguard -> vg. */
+    private val shortTokens = mapOf("Lapis" to "l", "Tungsten" to "t", "Umber" to "u", "Vanguard" to "vg")
+
     private val corpseLine = Regex("""^\s*(Lapis|Tungsten|Umber|Vanguard): (?:NOT )?LOOTED\s*$""", RegexOption.IGNORE_CASE)
 
     private val mc: Minecraft get() = Minecraft.getInstance()
@@ -85,12 +88,22 @@ object MineshaftCorpseReporter {
         return counts
     }
 
-    /** Sends e.g. `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`. */
+    /**
+     * Builds the party message according to the configured format:
+     * detailed -> "Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard"
+     * brief    -> "Corpses (4): 2l 1u 1vg"
+     * Types absent from the shaft are omitted in both formats.
+     */
     private fun sendReport(counts: Map<String, Int>) {
         val present = types.filter { (counts[it] ?: 0) > 0 }
         val total = present.sumOf { counts[it] ?: 0 }
-        val body = present.joinToString(", ") { "${counts[it]}x $it" }
-        val message = "Frozen Corpses ($total): $body"
+        val message = if (SkyziyouConfig.corpseReportDetailed) {
+            val body = present.joinToString(", ") { "${counts[it]}x $it" }
+            "Frozen Corpses ($total): $body"
+        } else {
+            val body = present.joinToString(" ") { "${counts[it]}${shortTokens[it]}" }
+            "Corpses ($total): $body"
+        }
 
         ActionQueue.enqueueCommand("pc $message")
         mc.player?.sendSystemMessage(

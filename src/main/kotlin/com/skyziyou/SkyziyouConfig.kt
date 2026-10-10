@@ -115,6 +115,12 @@ object SkyziyouConfig {
     /** Only send the corpse report while connected to Hypixel (checked via server brand). */
     var corpseReportHypixelOnly: Boolean = true
 
+    /**
+     * True  -> "Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard"
+     * False -> "Corpses (4): 2l 1u 1vg"
+     */
+    var corpseReportDetailed: Boolean = true
+
     private val file: Path
         get() = FabricLoader.getInstance().configDir.resolve("skyziyou.json")
 
@@ -188,6 +194,7 @@ object SkyziyouConfig {
             // mineshaft corpse report
             prim("corpseReportEnabled")?.let { corpseReportEnabled = it.asBoolean }
             prim("corpseReportHypixelOnly")?.let { corpseReportHypixelOnly = it.asBoolean }
+            prim("corpseReportDetailed")?.let { corpseReportDetailed = it.asBoolean }
             // custom command aliases; malformed entries are skipped entirely
             prim("aliasesEnabled")?.let { aliasesEnabled = it.asBoolean }
             prim("aliasesLog")?.let { aliasesLog = it.asBoolean }
@@ -267,6 +274,7 @@ object SkyziyouConfig {
             obj.add("chatRules", chatRuleArray)
             obj.addProperty("corpseReportEnabled", corpseReportEnabled)
             obj.addProperty("corpseReportHypixelOnly", corpseReportHypixelOnly)
+            obj.addProperty("corpseReportDetailed", corpseReportDetailed)
             obj.addProperty("aliasesEnabled", aliasesEnabled)
             obj.addProperty("aliasesLog", aliasesLog)
             val aliasArray = com.google.gson.JsonArray()
