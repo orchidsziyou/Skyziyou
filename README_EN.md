@@ -33,8 +33,13 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - First box: the command you type (with or without the leading `/`, e.g. `/home`); second box: what actually runs (`/` prefix = command, otherwise chat)
   - **Exact match only** (case-insensitive): typing the alias with extra arguments does not match and the original command is sent unchanged
   - Master switch, per-row on/off toggle, and an optional local log line whenever a command is rewritten
+- **Screen Alerts**: when watched text appears in chat, a large centred banner pops up near the top of the screen for 4 seconds — configured in the "Screen Alerts" sub-page, two boxes per row
+  - First box: chat text to watch (case-insensitive contains); second box: the banner text to display (falls back to the trigger text when blank); the row-end button restricts it to one channel (ANY / party / guild / all / private / system, ANY by default)
+  - Banner text supports § colour codes and the `[player]` (sender name) / `[me]` (your name) placeholders
+  - Banner font size is adjustable with −/+ on the settings page (1.0–5.0x, step 0.25) with a live preview at actual in-game size
+  - Repeating the same banner just refreshes its timer instead of stacking; distinct banners stack vertically (5 at most); pure client-side HUD draw, sends no packets
 - **Custom Chat Rules**: match incoming chat lines by channel (ANY / party / guild / all chat / private message / system) and automatically send a reply or run a command — configured in the "Custom Chat Rules" sub-page
-  - Matching: case-insensitive contains matching, or full regex matching (an invalid regex is reported once and then disabled automatically)
+  - Matching: contains or full regex matching, with a per-rule **Aa** toggle for case sensitivity (case-insensitive by default; an invalid regex is reported once and then disabled automatically)
   - Actions starting with `/` run as commands; everything else is sent as a chat message
   - Placeholders: `[player]` = the sender's name, `[me]` = your own name; regex rules additionally support `$1`–`$9` capture-group substitution
   - Channel prefixes are recognized by the server-sent section colour codes, so players cannot fake party/guild lines by typing them
@@ -73,10 +78,11 @@ Client-side only; servers do not need to install anything.
 5. Right click, or wait for the timeout, to close without running anything
 6. Extra direct shortcuts: open the "Custom Shortcuts" sub-page, add a row and bind a key with a command (e.g. numpad 2 → `/is`)
 7. Command aliases: open the "Command Aliases" sub-page; each row is **command you type → what actually runs**, e.g. `/home` → `/warp base`. A target without a leading `/` is sent as chat
-8. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
-9. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
-10. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
-11. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
+8. Screen alerts: open the "Screen Alerts" sub-page; each row is **chat text to watch → banner shown on screen → watched channel**, shown for 4 seconds when matched. Use the `[player]`, `[me]` placeholders and § colour codes
+9. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → Aa case toggle → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
+10. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
+11. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
+12. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
 
 ## Building from Source
 
@@ -125,6 +131,8 @@ src/main/
 │       │   └── ChatRulesFeature.kt / ChatRulesScreen.kt
 │       ├── command/            # Custom command aliases (typed-command rewrite)
 │       │   └── CommandAliases.kt / CommandAliasesScreen.kt
+│       ├── alert/              # Chat-keyword triggered centred screen banners
+│       │   └── ScreenAlerts.kt / ScreenAlertsScreen.kt
 │       ├── mineshaft/          # Reads tab corpse widget on shaft entry, reports via /pc
 │       │   └── MineshaftCorpseReporter.kt / MineshaftCorpseScreen.kt
 │       └── party/

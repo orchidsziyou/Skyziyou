@@ -8,8 +8,8 @@ import net.minecraft.network.chat.Component
 /**
  * User-defined chat rules ("Custom Chat Rules" settings sub-page).
  *
- * Each rule has a match pattern (case-insensitive contains, or a regex), an action
- * (leading slash = command, otherwise chat text) and a channel restriction
+ * Each rule has a match pattern (contains or regex, each optionally case-sensitive),
+ * an action (leading slash = command, otherwise chat text) and a channel restriction
  * (ANY / PARTY / GUILD / ALL / PRIVATE / SYSTEM). Actions support the `[player]`
  * placeholder (replaced with the sender's clean username) and, in regex mode,
  * `$1`..`$9` capture-group substitutions.
@@ -30,7 +30,7 @@ object ChatRulesFeature {
     /** Rule index -> last fire time. */
     private val lastFiredAt = HashMap<Int, Long>()
 
-    /** Regex cache: pattern text -> compiled regex, or null when the pattern is invalid. */
+    /** Regex cache: pattern text + case flag -> compiled regex, or null when invalid. */
     private val regexCache = HashMap<String, Regex?>()
 
     /** Invalid patterns already reported locally, so the warning shows only once. */
@@ -65,10 +65,10 @@ object ChatRulesFeature {
 
             // regex groups captured for $1..$9 substitution; null in plain contains mode
             val match: MatchResult? = if (rule.regex) {
-                val regex = compile(effectivePattern) ?: return@forEachIndexed
+                val regex = compile(effectivePattern, rule.ignoreCase) ?: return@forEachIndexed
                 regex.find(chat.message) ?: return@forEachIndexed
             } else {
-                if (!chat.message.contains(effectivePattern, ignoreCase = true)) return@forEachIndexed
+                if (!chat.message.contains(effectivePattern, ignoreCase = rule.ignoreCase)) return@forEachIndexed
                 null
             }
 
@@ -99,11 +99,13 @@ object ChatRulesFeature {
     }
 
     /** Compiles and caches a regex; reports an invalid pattern locally exactly once. */
-    private fun compile(pattern: String): Regex? {
-        if (regexCache.containsKey(pattern)) return regexCache[pattern]
-        val regex = runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }.getOrNull()
-        regexCache[pattern] = regex
-        if (regex == null && warnedBadPatterns.add(pattern)) {
+    private fun compile(pattern: String, ignoreCase: Boolean): Regex? {
+        val key = "$ignoreCase\n$pattern"
+        if (regexCache.containsKey(key)) return regexCache[key]
+        val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+        val regex = runCatching { Regex(pattern, options) }.getOrNull()
+        regexCache[key] = regex
+        if (regex == null && warnedBadPatterns.add(key)) {
             mc.player?.sendSystemMessage(
                 Component.literal("§c[ChatRules] Invalid regex, rule disabled: §7$pattern"),
             )

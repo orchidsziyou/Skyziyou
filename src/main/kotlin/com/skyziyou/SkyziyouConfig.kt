@@ -18,7 +18,8 @@ class ShortcutEntry(
  * One custom chat rule: when [pattern] is found in a chat line of the restricted
  * [channel] (a [com.skyziyou.features.chat.ChatChannel] name), [action] is sent
  * (leading slash = command, otherwise chat). [regex] switches [pattern] from
- * case-insensitive contains matching to full regex matching.
+ * contains matching to full regex matching. [ignoreCase] controls whether either
+ * kind of match is case-insensitive (default true).
  */
 class ChatRuleEntry(
     var enabled: Boolean = true,
@@ -26,6 +27,21 @@ class ChatRuleEntry(
     var action: String = "",
     var channel: String = "ANY",
     var regex: Boolean = false,
+    var ignoreCase: Boolean = true,
+)
+
+/**
+ * One screen alert: when [trigger] text is found in a received chat line of the
+ * restricted [channel] (a [com.skyziyou.features.chat.ChatChannel] name; ANY =
+ * all channels), [text] is shown as a large centred banner near the top of the
+ * screen for a few seconds. Matching is case-insensitive contains; [text]
+ * supports § codes and the `[player]` / `[me]` placeholders.
+ */
+class AlertEntry(
+    var enabled: Boolean = true,
+    var trigger: String = "",
+    var text: String = "",
+    var channel: String = "ANY",
 )
 
 /**
@@ -90,6 +106,15 @@ object SkyziyouConfig {
 
     /** User-defined chat match -> action rules; see [ChatRuleEntry]. */
     val chatRules: MutableList<ChatRuleEntry> = mutableListOf()
+
+    /** Screen Alerts master switch. */
+    var screenAlertsEnabled: Boolean = true
+
+    /** User-defined chat text -> on-screen banner alerts; see [AlertEntry]. */
+    val screenAlerts: MutableList<AlertEntry> = mutableListOf()
+
+    /** Banner font scale for Screen Alerts (clamped to 1.0..5.0 at use time). */
+    var screenAlertFontScale: Float = 2.5f
 
     /** Auto Party Invite master switch: a PM containing only "!invite" runs "/p <sender>". */
     var autoInviteEnabled: Boolean = true
@@ -187,10 +212,29 @@ object SkyziyouConfig {
                         action = str("action"),
                         channel = str("channel").ifBlank { "ANY" },
                         regex = bool("regex", false),
+                        ignoreCase = bool("ignoreCase", true),
                     )
                     chatRules.add(rule)
                 }
             }
+            // screen alerts; malformed entries are skipped entirely
+            prim("screenAlertsEnabled")?.let { screenAlertsEnabled = it.asBoolean }
+            obj.getAsJsonArray("screenAlerts")?.let { array ->
+                screenAlerts.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    fun str(name: String) = entry.get(name)?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    screenAlerts.add(
+                        AlertEntry(
+                            enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true,
+                            trigger = str("trigger"),
+                            text = str("text"),
+                            channel = str("channel").ifBlank { "ANY" },
+                        ),
+                    )
+                }
+            }
+            prim("screenAlertFontScale")?.let { screenAlertFontScale = it.asFloat }
             // mineshaft corpse report
             prim("corpseReportEnabled")?.let { corpseReportEnabled = it.asBoolean }
             prim("corpseReportHypixelOnly")?.let { corpseReportHypixelOnly = it.asBoolean }
@@ -269,9 +313,22 @@ object SkyziyouConfig {
                 entryObj.addProperty("action", rule.action)
                 entryObj.addProperty("channel", rule.channel)
                 entryObj.addProperty("regex", rule.regex)
+                entryObj.addProperty("ignoreCase", rule.ignoreCase)
                 chatRuleArray.add(entryObj)
             }
             obj.add("chatRules", chatRuleArray)
+            obj.addProperty("screenAlertsEnabled", screenAlertsEnabled)
+            val alertArray = com.google.gson.JsonArray()
+            screenAlerts.forEach { alert ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("enabled", alert.enabled)
+                entryObj.addProperty("trigger", alert.trigger)
+                entryObj.addProperty("text", alert.text)
+                entryObj.addProperty("channel", alert.channel)
+                alertArray.add(entryObj)
+            }
+            obj.add("screenAlerts", alertArray)
+            obj.addProperty("screenAlertFontScale", screenAlertFontScale)
             obj.addProperty("corpseReportEnabled", corpseReportEnabled)
             obj.addProperty("corpseReportHypixelOnly", corpseReportHypixelOnly)
             obj.addProperty("corpseReportDetailed", corpseReportDetailed)

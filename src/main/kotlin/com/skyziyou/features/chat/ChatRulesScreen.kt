@@ -11,7 +11,8 @@ import net.minecraft.network.chat.Component
 /**
  * "Custom Chat Rules" editor sub-page. Each row has three main boxes:
  *   match pattern | action (/command or chat text) | channel restriction,
- * plus an on/off switch, a contains/regex mode toggle and a delete button.
+ * plus an on/off switch, an ignore-case (Aa) toggle, a contains/regex mode
+ * toggle and a delete button.
  * Action text supports [player] (and $1..$9 in regex mode).
  */
 class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules")) {
@@ -44,7 +45,7 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
             },
         )
 
-        // one row per rule: [on/off][match][action][channel][regex][x]
+        // one row per rule: [on/off][match][action][channel][Aa][regex][x]
         for (row in 0 until visibleRows()) {
             val index = scroll + row
             if (index >= entries.size) break
@@ -58,14 +59,14 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
                 }.bounds(left, y, 22, 20).build(),
             )
 
-            val matchBox = EditBox(font, left + 26, y, 118, 20, Component.empty())
+            val matchBox = EditBox(font, left + 26, y, 106, 20, Component.empty())
             matchBox.setMaxLength(128)
             matchBox.value = rule.pattern
             matchBox.setHint(Component.literal("match text"))
             matchBox.setResponder { rule.pattern = it }
             addRenderableWidget(matchBox)
 
-            val actionBox = EditBox(font, left + 148, y, 118, 20, Component.empty())
+            val actionBox = EditBox(font, left + 136, y, 106, 20, Component.empty())
             actionBox.setMaxLength(128)
             actionBox.value = rule.action
             actionBox.setHint(Component.literal("/command or reply"))
@@ -76,14 +77,21 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
                 Button.builder(Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)) {
                     rule.channel = nextChannel(rule.channel).name
                     it.message = Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)
-                }.bounds(left + 270, y, 40, 20).build(),
+                }.bounds(left + 246, y, 36, 20).build(),
+            )
+
+            addRenderableWidget(
+                Button.builder(caseLabel(rule)) {
+                    rule.ignoreCase = !rule.ignoreCase
+                    it.message = caseLabel(rule)
+                }.bounds(left + 286, y, 24, 20).build(),
             )
 
             addRenderableWidget(
                 Button.builder(regexLabel(rule)) {
                     rule.regex = !rule.regex
                     it.message = regexLabel(rule)
-                }.bounds(left + 314, y, 28, 20).build(),
+                }.bounds(left + 314, y, 30, 20).build(),
             )
 
             addRenderableWidget(
@@ -113,9 +121,14 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
         val left = width / 2 - 183
         graphics.text(font, title.string, width / 2 - font.width(title.string) / 2, 8, -1, false)
         graphics.text(font, "§7match ([me] = you)", left + 26, startY - 10, -1, false)
-        graphics.text(font, "§7action  (use [player], \$1..\$9)", left + 148, startY - 10, -1, false)
-        graphics.text(font, "§7ch", left + 270, startY - 10, -1, false)
-        graphics.text(font, "§7Ch: ANY/PC/GC/AC/PM/SYS · mode button: Ab=contains  .*=regex", left, height - 70, -1, false)
+        graphics.text(font, "§7action  (use [player], \$1..\$9)", left + 136, startY - 10, -1, false)
+        graphics.text(font, "§7ch", left + 246, startY - 10, -1, false)
+        graphics.text(font, "§7Aa", left + 288, startY - 10, -1, false)
+        graphics.text(
+            font,
+            "§7Ch: ANY/PC/GC/AC/PM/SYS · Aa: green=ignore case, red=exact · Ab=contains  .*=regex",
+            left, height - 70, -1, false,
+        )
     }
 
     override fun mouseScrolled(
@@ -141,6 +154,9 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
 
     private fun regexLabel(rule: ChatRuleEntry): Component =
         Component.literal(if (rule.regex) "§b.*" else "§7Ab")
+
+    private fun caseLabel(rule: ChatRuleEntry): Component =
+        Component.literal(if (rule.ignoreCase) "§aAa" else "§cAa")
 
     private fun nextChannel(currentName: String): ChatChannel {
         val channels = ChatChannel.selectable

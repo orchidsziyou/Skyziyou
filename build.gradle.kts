@@ -19,7 +19,7 @@ plugins {
 }
 
 group = "com.skyziyou"
-version = "1.2.1"
+version = "1.2.2"
 
 base {
     archivesName.set("Skyziyou-Fabric+mc$node")

@@ -1,6 +1,7 @@
 package com.skyziyou
 
 import com.skyziyou.features.ActionQueue
+import com.skyziyou.features.alert.ScreenAlerts
 import com.skyziyou.features.chat.ChatClassifier
 import com.skyziyou.features.chat.ChatRulesFeature
 import com.skyziyou.features.command.CommandAliases
@@ -33,6 +34,7 @@ object SkyziyouMod : ClientModInitializer {
         AutoInviteFeature.register()
         CommandAliases.register()
         MineshaftCorpseReporter.register()
+        ScreenAlerts.register()
 
         // /skyziyou and /sz both open the settings category screen
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->

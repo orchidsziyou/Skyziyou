@@ -1,5 +1,6 @@
 package com.skyziyou
 
+import com.skyziyou.features.alert.ScreenAlertsScreen
 import com.skyziyou.features.chat.ChatRulesScreen
 import com.skyziyou.features.command.CommandAliasesScreen
 import com.skyziyou.features.mineshaft.MineshaftCorpseScreen
@@ -27,42 +28,52 @@ class ConfigScreen : Screen(Component.literal("Skyziyou Settings")) {
     private val categories = listOf(
         Category(
             "Command Wheel",
-            "Radial wheel slots, trigger keybind and wheel behaviour.",
+            "Wheel slots, trigger key and behaviour.",
         ) { WheelConfigScreen() },
         Category(
             "Custom Shortcuts",
-            "Bind keys directly to commands or chat messages.",
+            "Bind keys directly to commands or chat.",
         ) { ShortcutsScreen() },
         Category(
             "Custom Chat Rules",
-            "Match chat text per channel and auto-send replies or commands.",
+            "Match chat text, auto-reply or run commands.",
         ) { ChatRulesScreen() },
         Category(
             "Command Aliases",
-            "Rewrite a command you type into another command or chat message.",
+            "Rewrite a typed command into another one.",
         ) { CommandAliasesScreen() },
         Category(
+            "Screen Alerts",
+            "Show a banner on screen when chat text appears.",
+        ) { ScreenAlertsScreen() },
+        Category(
             "Mineshaft Corpses",
-            "Report frozen corpse counts to party chat when entering a mineshaft.",
+            "Post corpse counts to party chat in mineshafts.",
         ) { MineshaftCorpseScreen() },
         Category(
             "Auto Party Invite",
-            "Automatically invite players that PM you !invite.",
+            "Auto-invite players that PM you !invite.",
         ) { AutoInviteConfigScreen() },
     )
 
     override fun init() {
-        val colW = 240
+        // two-column category grid so seven categories fit small GUI scales
+        val colW = 220
+        val gap = 10
         val rowH = 34
         val startY = 70
-        val x = width / 2 - colW / 2
+        val rowsPerCol = (categories.size + 1) / 2
+        val gridLeft = width / 2 - (colW * 2 + gap) / 2
 
         categories.forEachIndexed { index, category ->
+            val col = index / rowsPerCol
+            val row = index % rowsPerCol
+            val x = gridLeft + col * (colW + gap)
             addRenderableWidget(
                 Button.builder(Component.literal(category.label)) {
                     //~ if < 26.2 'minecraft.gui.setScreen' -> 'minecraft.setScreen'
                     minecraft.gui.setScreen(category.factory())
-                }.bounds(x, startY + index * rowH, colW, 20).build(),
+                }.bounds(x, startY + row * rowH, colW, 20).build(),
             )
         }
 
@@ -78,11 +89,18 @@ class ConfigScreen : Screen(Component.literal("Skyziyou Settings")) {
         val text = title.string
         graphics.text(font, text, width / 2 - font.width(text) / 2, 15, -1, false)
 
-        val startY = 70
+        val colW = 220
+        val gap = 10
         val rowH = 34
+        val startY = 70
+        val rowsPerCol = (categories.size + 1) / 2
+        val gridLeft = width / 2 - (colW * 2 + gap) / 2
         categories.forEachIndexed { index, category ->
+            val col = index / rowsPerCol
+            val row = index % rowsPerCol
+            val centerX = gridLeft + col * (colW + gap) + colW / 2
             val desc = "§7${category.description}"
-            graphics.text(font, desc, width / 2 - font.width(desc) / 2, startY + index * rowH + 23, -1, false)
+            graphics.text(font, desc, centerX - font.width(desc) / 2, startY + row * rowH + 23, -1, false)
         }
     }
 }
