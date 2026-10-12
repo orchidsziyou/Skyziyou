@@ -2,9 +2,11 @@ package com.skyziyou.features.chat
 
 import com.skyziyou.BaseConfigScreen
 import com.skyziyou.ChatRuleEntry
+import com.skyziyou.I18n
+import com.skyziyou.SkyButton
+import com.skyziyou.SkyTheme
 import com.skyziyou.SkyziyouConfig
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.network.chat.Component
 
@@ -15,7 +17,7 @@ import net.minecraft.network.chat.Component
  * toggle and a delete button.
  * Action text supports [player] (and $1..$9 in regex mode).
  */
-class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules")) {
+class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
 
     private var scroll = 0
 
@@ -23,24 +25,24 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
     // toggles end at y=46, column headers occupy 48-57, first row starts at 58
     private val startY = 58
 
-    override fun init() {
-        val left = width / 2 - 183
+    override fun buildPage() {
+        val left = centerX(348)
         val entries = SkyziyouConfig.chatRules
         scroll = scroll.coerceIn(0, maxScroll())
 
         // three master toggles above the list
         addRenderableWidget(
-            toggleButton("Enabled", SkyziyouConfig.chatRulesEnabled, left, 26, 116) {
+            toggleButton(I18n.t("common.enabled"), SkyziyouConfig.chatRulesEnabled, left, 26, 110) {
                 SkyziyouConfig.chatRulesEnabled = it
             },
         )
         addRenderableWidget(
-            toggleButton("Log", SkyziyouConfig.chatRulesLog, left + 120, 26, 116) {
+            toggleButton(I18n.t("common.log"), SkyziyouConfig.chatRulesLog, left + 114, 26, 110) {
                 SkyziyouConfig.chatRulesLog = it
             },
         )
         addRenderableWidget(
-            toggleButton("Hypixel Only", SkyziyouConfig.chatRulesHypixelOnly, left + 240, 26, 126) {
+            toggleButton(I18n.t("common.hypixel_only"), SkyziyouConfig.chatRulesHypixelOnly, left + 228, 26, 120) {
                 SkyziyouConfig.chatRulesHypixelOnly = it
             },
         )
@@ -53,81 +55,75 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
             val rule = entries[index]
 
             addRenderableWidget(
-                Button.builder(onOffLabel(rule)) {
-                    rule.enabled = !rule.enabled
-                    it.message = onOffLabel(rule)
-                }.bounds(left, y, 22, 20).build(),
+                checkButton(left, y, rule.enabled) { rule.enabled = it },
             )
 
-            val matchBox = EditBox(font, left + 26, y, 106, 20, Component.empty())
+            val matchBox = EditBox(font, left + 26, y, 95, 20, Component.empty())
             matchBox.setMaxLength(128)
             matchBox.value = rule.pattern
-            matchBox.setHint(Component.literal("match text"))
+            matchBox.setHint(Component.literal(I18n.t("chatrules.match_hint")))
             matchBox.setResponder { rule.pattern = it }
             addRenderableWidget(matchBox)
 
-            val actionBox = EditBox(font, left + 136, y, 106, 20, Component.empty())
+            val actionBox = EditBox(font, left + 125, y, 95, 20, Component.empty())
             actionBox.setMaxLength(128)
             actionBox.value = rule.action
-            actionBox.setHint(Component.literal("/command or reply"))
+            actionBox.setHint(Component.literal(I18n.t("chatrules.action_hint")))
             actionBox.setResponder { rule.action = it }
             addRenderableWidget(actionBox)
 
             addRenderableWidget(
-                Button.builder(Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)) {
+                SkyButton(left + 224, y, 36, 20, Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)) {
                     rule.channel = nextChannel(rule.channel).name
                     it.message = Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)
-                }.bounds(left + 246, y, 36, 20).build(),
+                },
             )
 
             addRenderableWidget(
-                Button.builder(caseLabel(rule)) {
+                SkyButton(left + 264, y, 24, 20, caseLabel(rule)) {
                     rule.ignoreCase = !rule.ignoreCase
                     it.message = caseLabel(rule)
-                }.bounds(left + 286, y, 24, 20).build(),
+                },
             )
 
             addRenderableWidget(
-                Button.builder(regexLabel(rule)) {
+                SkyButton(left + 292, y, 30, 20, regexLabel(rule)) {
                     rule.regex = !rule.regex
                     it.message = regexLabel(rule)
-                }.bounds(left + 314, y, 30, 20).build(),
+                },
             )
 
             addRenderableWidget(
-                Button.builder(Component.literal("X")) {
+                SkyButton(
+                    left + 324, y, 20, 20, Component.literal("X"),
+                    style = SkyButton.Style.DANGER,
+                ) {
                     entries.removeAt(index)
                     rebuildWidgets()
-                }.bounds(left + 346, y, 20, 20).build(),
+                },
             )
         }
 
         addRenderableWidget(
-            Button.builder(Component.literal("Add Rule")) {
+            SkyButton(centerX(200), height - 30, 200, 20, Component.literal(I18n.t("chatrules.add"))) {
                 entries.add(ChatRuleEntry())
                 scroll = maxScroll()
                 rebuildWidgets()
-            }.bounds(width / 2 - 150, height - 55, 145, 20).build(),
-        )
-        addRenderableWidget(
-            Button.builder(Component.literal("Back")) { onClose() }
-                .bounds(width / 2 + 5, height - 55, 145, 20)
-                .build(),
+            },
         )
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        val left = width / 2 - 183
-        graphics.text(font, title.string, width / 2 - font.width(title.string) / 2, 8, -1, false)
-        graphics.text(font, "§7match ([me] = you)", left + 26, startY - 10, -1, false)
-        graphics.text(font, "§7action  (use [player], \$1..\$9)", left + 136, startY - 10, -1, false)
-        graphics.text(font, "§7ch", left + 246, startY - 10, -1, false)
-        graphics.text(font, "§7Aa", left + 288, startY - 10, -1, false)
+        val left = centerX(348)
+        graphics.text(font, I18n.t("chatrules.header_match"), left + 26, startY - 10, SkyTheme.TEXT_DIM, false)
+        graphics.text(font, I18n.t("chatrules.header_action"), left + 125, startY - 10, SkyTheme.TEXT_DIM, false)
+        graphics.text(font, "§7ch", left + 224, startY - 10, -1, false)
+        graphics.text(font, "§7Aa", left + 266, startY - 10, -1, false)
         graphics.text(
             font,
-            "§7Ch: ANY/PC/GC/AC/PM/SYS · Aa: green=ignore case, red=exact · Ab=contains  .*=regex",
-            left, height - 70, -1, false,
+            I18n.t("chatrules.legend"),
+            left, height - 70, SkyTheme.TEXT_DIM, false,
         )
     }
 
@@ -148,9 +144,6 @@ class ChatRulesScreen : BaseConfigScreen(Component.literal("Custom Chat Rules"))
     private fun visibleRows(): Int = ((height - startY - 80) / rowH).coerceAtLeast(1)
 
     private fun maxScroll(): Int = (SkyziyouConfig.chatRules.size - visibleRows()).coerceAtLeast(0)
-
-    private fun onOffLabel(rule: ChatRuleEntry): Component =
-        Component.literal(if (rule.enabled) "§aON" else "§cOFF")
 
     private fun regexLabel(rule: ChatRuleEntry): Component =
         Component.literal(if (rule.regex) "§b.*" else "§7Ab")

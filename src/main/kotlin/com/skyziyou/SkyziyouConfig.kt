@@ -1,6 +1,7 @@
 package com.skyziyou
 
 import com.google.gson.JsonParser
+import net.minecraft.ChatFormatting
 import org.lwjgl.glfw.GLFW
 import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
@@ -45,6 +46,17 @@ class AlertEntry(
 )
 
 /**
+ * One entity highlight: every living entity whose display name contains [name]
+ * (case-insensitive) gets the vanilla glowing outline in [color], a ChatFormatting
+ * colour name such as "RED" (only the 16 team colours exist).
+ */
+class HighlightEntry(
+    var enabled: Boolean = true,
+    var name: String = "",
+    var color: String = "RED",
+)
+
+/**
  * One command alias: typing exactly "/<[alias]>" (the stored value may include the
  * leading slash) runs [target] instead — a command when it starts with '/',
  * otherwise a chat message. Matching is exact and case-insensitive; extra arguments
@@ -61,6 +73,9 @@ class CommandAliasEntry(
  * Entries starting with '/' are executed as commands, anything else is sent as a chat message.
  */
 object SkyziyouConfig {
+
+    /** Settings UI language code ("EN" / "ZH"); see [I18n]. */
+    var language: String = "EN"
 
     /** GLFW keycode of the wheel trigger; GLFW_KEY_UNKNOWN (-1) means unbound. Mouse buttons 0-7 are also allowed. */
     var keybind: Int = GLFW.GLFW_KEY_UNKNOWN
@@ -116,6 +131,12 @@ object SkyziyouConfig {
     /** Banner font scale for Screen Alerts (clamped to 1.0..5.0 at use time). */
     var screenAlertFontScale: Float = 2.5f
 
+    /** Entity Highlights master switch. */
+    var entityHighlightsEnabled: Boolean = true
+
+    /** User-defined entity name -> glow colour highlights; see [HighlightEntry]. */
+    val entityHighlights: MutableList<HighlightEntry> = mutableListOf()
+
     /** Auto Party Invite master switch: a PM containing only "!invite" runs "/p <sender>". */
     var autoInviteEnabled: Boolean = true
 
@@ -160,12 +181,19 @@ object SkyziyouConfig {
     fun load() {
         migrateLegacyConfig()
         runCatching {
-            if (!Files.exists(file)) return
+            // brand-new install: seed starter rules/aliases, persist them, then skip parsing
+            if (!Files.exists(file)) {
+                seedFirstRunDefaults()
+                save()
+                I18n.language = language
+                return
+            }
             val obj = JsonParser.parseString(Files.readString(file)).asJsonObject
 
             // only accepts existing primitive values; a missing or mistyped field keeps the default
             fun prim(name: String) = obj.get(name)?.takeIf { it.isJsonPrimitive }
 
+            prim("language")?.let { if (it.asString == I18n.EN || it.asString == I18n.ZH) language = it.asString }
             prim("keybind")?.let { keybind = it.asInt }
             prim("enabled")?.let { enabled = it.asBoolean }
             prim("executeOnRelease")?.let { executeOnRelease = it.asBoolean }
@@ -235,6 +263,24 @@ object SkyziyouConfig {
                 }
             }
             prim("screenAlertFontScale")?.let { screenAlertFontScale = it.asFloat }
+            // entity highlights; malformed entries are skipped entirely
+            prim("entityHighlightsEnabled")?.let { entityHighlightsEnabled = it.asBoolean }
+            obj.getAsJsonArray("entityHighlights")?.let { array ->
+                entityHighlights.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    fun str(name: String) = entry.get(name)?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    val colorName = str("color").ifBlank { "RED" }
+                    entityHighlights.add(
+                        HighlightEntry(
+                            enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true,
+                            name = str("name"),
+                            // drop unknown legacy colours instead of crashing the ChatFormatting lookup
+                            color = colorName.takeIf { runCatching { ChatFormatting.valueOf(it) }.isSuccess } ?: "RED",
+                        ),
+                    )
+                }
+            }
             // mineshaft corpse report
             prim("corpseReportEnabled")?.let { corpseReportEnabled = it.asBoolean }
             prim("corpseReportHypixelOnly")?.let { corpseReportHypixelOnly = it.asBoolean }
@@ -256,6 +302,24 @@ object SkyziyouConfig {
                 }
             }
         }.onFailure { it.printStackTrace() }
+        // apply (or keep the default) even when the file is missing or unreadable
+        I18n.language = language
+    }
+
+    /**
+     * Starter content for brand-new installs (no skyziyou.json and no legacy file):
+     * two guild-channel auto-invite rules and a /p leave alias, all enabled.
+     * Existing users never reach this path, and rules a user deletes stay deleted
+     * because [load] only seeds while the config file is absent.
+     */
+    private fun seedFirstRunDefaults() {
+        chatRules.add(
+            ChatRuleEntry(pattern = "@[me] !i", action = "/p [player]", channel = "GUILD", regex = true),
+        )
+        chatRules.add(
+            ChatRuleEntry(pattern = "@[me] boop", action = "/boop [player]", channel = "GUILD", regex = true),
+        )
+        aliases.add(CommandAliasEntry(alias = "/pl", target = "/p leave"))
     }
 
     /**
@@ -279,6 +343,7 @@ object SkyziyouConfig {
     fun save() {
         runCatching {
             val obj = com.google.gson.JsonObject()
+            obj.addProperty("language", language)
             obj.addProperty("keybind", keybind)
             obj.addProperty("enabled", enabled)
             obj.addProperty("executeOnRelease", executeOnRelease)
@@ -329,6 +394,16 @@ object SkyziyouConfig {
             }
             obj.add("screenAlerts", alertArray)
             obj.addProperty("screenAlertFontScale", screenAlertFontScale)
+            obj.addProperty("entityHighlightsEnabled", entityHighlightsEnabled)
+            val highlightArray = com.google.gson.JsonArray()
+            entityHighlights.forEach { highlight ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("enabled", highlight.enabled)
+                entryObj.addProperty("name", highlight.name)
+                entryObj.addProperty("color", highlight.color)
+                highlightArray.add(entryObj)
+            }
+            obj.add("entityHighlights", highlightArray)
             obj.addProperty("corpseReportEnabled", corpseReportEnabled)
             obj.addProperty("corpseReportHypixelOnly", corpseReportHypixelOnly)
             obj.addProperty("corpseReportDetailed", corpseReportDetailed)

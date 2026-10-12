@@ -1,59 +1,57 @@
 package com.skyziyou.features.party
 
 import com.skyziyou.BaseConfigScreen
+import com.skyziyou.I18n
+import com.skyziyou.SkyTheme
 import com.skyziyou.SkyziyouConfig
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.network.chat.Component
 
 /**
- * Settings sub-page for [AutoInviteFeature]. Reached from the main ConfigScreen
- * category menu; saving and the Back navigation are handled by [BaseConfigScreen].
+ * Settings page for [AutoInviteFeature]. Saving and sidebar navigation are handled
+ * by [BaseConfigScreen].
  */
-class AutoInviteConfigScreen : BaseConfigScreen(Component.literal("Auto Party Invite")) {
+class AutoInviteConfigScreen : BaseConfigScreen("cat.invite") {
 
-    override fun init() {
-        val colW = 240
-        val x = width / 2 - colW / 2
+    override fun buildPage() {
+        val colW = 260
+        val x = centerX(colW)
         val rowH = 26
-        val startY = 60
+        val startY = 50
 
         addRenderableWidget(
             toggleButton(
-                "Enabled",
+                I18n.t("common.enabled"),
                 SkyziyouConfig.autoInviteEnabled,
                 x, startY, colW,
             ) { SkyziyouConfig.autoInviteEnabled = it },
         )
         addRenderableWidget(
             toggleButton(
-                "Invite Log",
+                I18n.t("invite.invite_log"),
                 SkyziyouConfig.autoInviteLog,
                 x, startY + rowH, colW,
             ) { SkyziyouConfig.autoInviteLog = it },
         )
         addRenderableWidget(
             toggleButton(
-                "Hypixel Only",
+                I18n.t("common.hypixel_only"),
                 SkyziyouConfig.autoInviteHypixelOnly,
                 x, startY + rowH * 2, colW,
             ) { SkyziyouConfig.autoInviteHypixelOnly = it },
         )
-
-        addBackButton()
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        graphics.text(font, title.string, width / 2 - font.width(title.string) / 2, 15, -1, false)
 
         val lines = listOf(
-            "§7Invites a player when their private message is exactly §f!invite§7.",
-            "§7Runs §f/p <player>§7; the message is matched case-insensitively.",
-            "§7Same player cooldown: §f60s§7 · commands are spaced §f1s§7 apart (queued).",
+            I18n.t("invite.line1"),
+            I18n.t("invite.line2"),
+            I18n.t("invite.line3"),
         )
         var y = height - 70
         for (line in lines) {
-            graphics.text(font, line, width / 2 - font.width(line) / 2, y, -1, false)
+            graphics.text(font, line, pageCX - font.width(line) / 2, y, SkyTheme.TEXT_DIM, false)
             y += 12
         }
     }

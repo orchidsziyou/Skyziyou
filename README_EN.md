@@ -27,23 +27,31 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - The **camera is locked** while the wheel is open, so picking a sector never turns your view
   - **Vanilla mouse clicks are swallowed** while the wheel is open — no accidental attacks or block placements
   - Right click cancels anytime; the wheel auto-closes after a configurable timeout
-- **Built-in category settings menu**: type `/skyziyou` or `/sz` in game; every feature has its own sub-page, changes apply instantly and are saved on close
+- **Built-in category settings menu**: type `/skyziyou` or `/sz` in game; a dark SkyHanni-style layout with a left category sidebar and green ✓ / red ✕ toggles, every feature has its own sub-page, changes apply instantly and are saved on Esc/Done; the button at the bottom of the sidebar switches the interface language between **English / 中文** (settings UI only, sent chat/commands are unchanged)
 - **Custom key shortcuts**: bind any key (including mouse buttons, e.g. numpad 2) directly to a command or chat message and run it with a single press — configured in the "Custom Shortcuts" sub-page; each shortcut can be toggled on/off individually, and key conflicts are flagged in red
 - **Custom Command Aliases**: rewrite a command you type into another command or a chat message — configured in the "Command Aliases" sub-page, two boxes per row
   - First box: the command you type (with or without the leading `/`, e.g. `/home`); second box: what actually runs (`/` prefix = command, otherwise chat)
   - **Exact match only** (case-insensitive): typing the alias with extra arguments does not match and the original command is sent unchanged
   - Master switch, per-row on/off toggle, and an optional local log line whenever a command is rewritten
+  - Brand-new installs start with one sample alias `/pl` -> `/p leave` (removable; seeded once only while no config file exists, never re-added)
 - **Screen Alerts**: when watched text appears in chat, a large centred banner pops up near the top of the screen for 4 seconds — configured in the "Screen Alerts" sub-page, two boxes per row
   - First box: chat text to watch (case-insensitive contains); second box: the banner text to display (falls back to the trigger text when blank); the row-end button restricts it to one channel (ANY / party / guild / all / private / system, ANY by default)
   - Banner text supports § colour codes and the `[player]` (sender name) / `[me]` (your name) placeholders
   - Banner font size is adjustable with −/+ on the settings page (1.0–5.0x, step 0.25) with a live preview at actual in-game size
   - Repeating the same banner just refreshes its timer instead of stacking; distinct banners stack vertically (5 at most); pure client-side HUD draw, sends no packets
+- **Entity Highlights**: type a mob name in the "Entity Highlights" sub-page and every living entity whose display name contains it (case-insensitive) gets the vanilla glowing outline, **visible through walls** — handy for finding mobs or NPCs
+  - Each row: on/off -> entity name -> outline colour (click to cycle 15 vanilla colours: red, gold, yellow, green, aqua, blue, light purple, white, ...) -> delete; when several rows match, the first one wins
+  - Matches both the entity's own name and the **hologram text above it** (Hypixel NPC/mob names sit on invisible armour stands, e.g. the hub Blacksmith); the mob body itself is what glows
+  - Pure vanilla mechanics (entity shared glow bit + client-side scoreboard team colour): no render Mixins, no packets; armour stands and your own player are skipped
+  - Note: `setGlowingTag` is a no-op on the physical client, so a one-method Mixin Invoker (`EntityAccessor`) calls the protected `setSharedFlag(6, true)` directly
+  - Spawn-driven matching plus a cheap full reconcile every 2 seconds as a safety net (late-arriving hologram names self-heal within 2s): only ~0.5 world passes per second in steady state, and per-tick work only maintains the small highlighted set
 - **Custom Chat Rules**: match incoming chat lines by channel (ANY / party / guild / all chat / private message / system) and automatically send a reply or run a command — configured in the "Custom Chat Rules" sub-page
   - Matching: contains or full regex matching, with a per-rule **Aa** toggle for case sensitivity (case-insensitive by default; an invalid regex is reported once and then disabled automatically)
   - Actions starting with `/` run as commands; everything else is sent as a chat message
   - Placeholders: `[player]` = the sender's name, `[me]` = your own name; regex rules additionally support `$1`–`$9` capture-group substitution
   - Channel prefixes are recognized by the server-sent section colour codes, so players cannot fake party/guild lines by typing them
   - Every rule has a 3s cooldown, all actions go through a global queue throttled to one message per second (cleared on disconnect), and rules can be restricted to Hypixel only
+  - Brand-new installs start with two sample guild rules: `@[me] !i` -> `/p [player]` and `@[me] boop` -> `/boop [player]` (regex mode; freely editable/removable, seeded once only)
 - **Mineshaft Corpse Report**: right after entering a Glacial Tunnels mineshaft, reads the "Frozen Corpses" section of the tab list and sends the corpse counts per type to party chat once — configured in the "Mineshaft Corpses" sub-page
   - Detailed (default): `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`; brief: `/pc Corpses (4): 2l 1u 1vg` (l/t/u/vg = Lapis/Tungsten/Umber/Vanguard; only types present in the shaft are listed)
   - Data comes straight from tab text — **no entity scanning and no view-distance dependence**; the message is sent within about a second of the shaft loading, exactly once per mineshaft, and rearms only after leaving
@@ -71,7 +79,7 @@ Client-side only; servers do not need to install anything.
 
 ## Usage
 
-1. Type `/skyziyou` (or the short form `/sz`) in game to open the settings category menu
+1. Type `/skyziyou` (or the short form `/sz`) in game to open the settings menu and switch feature categories from the left sidebar
 2. Open the **Command Wheel** sub-page, click the **Wheel Keybind** button, then press any key (or mouse button) to bind the trigger
 3. Fill in the 8 input boxes with the command or message for each direction (leave a slot empty to disable it)
 4. Hold the trigger key to open the wheel → flick the mouse toward a direction → left click (or release the key) to run it
@@ -82,7 +90,8 @@ Client-side only; servers do not need to install anything.
 9. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → Aa case toggle → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
 10. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
 11. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
-12. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
+12. Entity highlights: open the "Entity Highlights" sub-page; each row is **entity name -> outline colour**; matched mobs glow and show through walls. Living mobs only (armour stands excluded)
+13. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
 
 ## Building from Source
 
@@ -118,7 +127,8 @@ src/main/
 │   └── ClientCommonPacketListenerAccessor.java # Server brand accessor (Hypixel detection)
 ├── kotlin/com/skyziyou/
 │   ├── SkyziyouMod.kt          # Mod entrypoint: config, renderer, event registration
-│   ├── ConfigScreen.kt         # Settings category menu + BaseConfigScreen base class
+│   ├── ConfigScreen.kt         # Category registry + BaseConfigScreen sidebar shell
+│   ├── SkyWidgets.kt           # Dark-theme widgets: SkyButton / SkyToggle (✓/✕)
 │   ├── WheelState.kt           # Core wheel state machine: open/select/close/execute
 │   ├── WheelRenderer.kt        # HUD rendering: scanline disc + text labels
 │   ├── SkyziyouConfig.kt       # JSON config I/O (atomic writes, legacy config migration)

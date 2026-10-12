@@ -4,17 +4,16 @@ import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
 /**
- * "Custom Shortcuts" editor sub-page, reached from the [ConfigScreen] category menu.
+ * "Custom Shortcuts" editor sub-page, reached from the [BaseConfigScreen] sidebar.
  * Each row binds a key to a command or chat message; rows scroll when the list is
  * longer than the screen fits. Changes are applied instantly and saved on close.
  */
-class ShortcutsScreen : BaseConfigScreen(Component.literal("Custom Shortcuts")) {
+class ShortcutsScreen : BaseConfigScreen("cat.shortcuts") {
 
     private var scroll = 0
 
@@ -28,12 +27,12 @@ class ShortcutsScreen : BaseConfigScreen(Component.literal("Custom Shortcuts")) 
 
     private fun maxScroll(): Int = (SkyziyouConfig.shortcuts.size - visibleRows()).coerceAtLeast(0)
 
-    override fun init() {
-        val left = width / 2 - 190
+    override fun buildPage() {
+        val left = centerX(344)
         val entries = SkyziyouConfig.shortcuts
         scroll = scroll.coerceIn(0, maxScroll())
 
-        // one row per shortcut: [keybind button][on/off toggle][command input][delete]
+        // one row per shortcut: [keybind button][check toggle][command input][delete]
         for (row in 0 until visibleRows()) {
             val index = scroll + row
             if (index >= entries.size) break
@@ -41,58 +40,51 @@ class ShortcutsScreen : BaseConfigScreen(Component.literal("Custom Shortcuts")) 
             val entry = entries[index]
 
             addRenderableWidget(
-                Button.builder(keybindLabel(index)) {
+                SkyButton(left, y, 90, 20, keybindLabel(index)) {
                     listeningIndex = index
-                    it.message = Component.literal("Key: press any key...")
-                }.bounds(left, y, 105, 20).build(),
+                    it.message = Component.literal(I18n.t("shortcuts.listening"))
+                },
             )
 
             addRenderableWidget(
-                Button.builder(toggleLabel(entry)) {
-                    entry.enabled = !entry.enabled
-                    it.message = toggleLabel(entry)
-                }.bounds(left + 110, y, 45, 20).build(),
+                checkButton(left + 94, y, entry.enabled) { entry.enabled = it },
             )
 
-            val box = EditBox(font, left + 160, y, 195, 20, Component.empty())
+            val box = EditBox(font, left + 120, y, 200, 20, Component.empty())
             box.setMaxLength(64)
             box.value = entry.command
-            box.setHint(Component.literal("/command or chat message"))
+            box.setHint(Component.literal(I18n.t("shortcuts.hint")))
             box.setResponder { value -> entry.command = value }
             addRenderableWidget(box)
 
             addRenderableWidget(
-                Button.builder(Component.literal("X")) {
+                SkyButton(
+                    left + 324, y, 20, 20, Component.literal("X"),
+                    style = SkyButton.Style.DANGER,
+                ) {
                     // keep the listening index pointing at the same entry when rows shift
                     if (listeningIndex == index) listeningIndex = -1
                     else if (listeningIndex > index) listeningIndex--
                     entries.removeAt(index)
                     rebuildWidgets()
-                }.bounds(left + 360, y, 20, 20).build(),
+                },
             )
         }
 
         addRenderableWidget(
-            Button.builder(Component.literal("Add Shortcut")) {
+            SkyButton(centerX(200), height - 30, 200, 20, Component.literal(I18n.t("shortcuts.add"))) {
                 entries.add(ShortcutEntry())
                 scroll = maxScroll()
                 rebuildWidgets()
-            }.bounds(width / 2 - 100, height - 55, 200, 20).build(),
-        )
-        addRenderableWidget(
-            Button.builder(Component.literal("Back")) { onClose() }
-                .bounds(width / 2 - 100, height - 30, 200, 20)
-                .build(),
+            },
         )
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        val text = title.string
-        graphics.text(font, text, width / 2 - font.width(text) / 2, 15, -1, false)
         if (hasConflicts()) {
-            val warn = "§c⚠ duplicate keys will all trigger"
-            graphics.text(font, warn, width / 2 - font.width(warn) / 2, 26, -1, false)
+            val warn = I18n.t("shortcuts.conflict")
+            graphics.text(font, warn, pageCX - font.width(warn) / 2, 25, SkyTheme.RED, false)
         }
     }
 
@@ -142,19 +134,16 @@ class ShortcutsScreen : BaseConfigScreen(Component.literal("Custom Shortcuts")) 
         return keys.size != keys.distinct().size || keys.any { it == SkyziyouConfig.keybind }
     }
 
-    private fun toggleLabel(entry: ShortcutEntry): Component =
-        Component.literal(if (entry.enabled) "§aON" else "§cOFF")
-
     private fun keybindLabel(index: Int): Component {
         val entry = SkyziyouConfig.shortcuts[index]
         val key = entry.key
         val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
-            "not set"
+            I18n.t("common.not_set")
         } else {
             val type = if (key in 0..7) InputConstants.Type.MOUSE else InputConstants.Type.KEYSYM
             type.getOrCreate(key).displayName.string
         }
-        var label = "Key: $name"
+        var label = I18n.t("shortcuts.key", name)
         // flag keys that will not trigger or that clash with another enabled shortcut
         if (key != GLFW.GLFW_KEY_UNKNOWN) {
             val duplicated = SkyziyouConfig.shortcuts.any { it !== entry && it.enabled && it.key == key }

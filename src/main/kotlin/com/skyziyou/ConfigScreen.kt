@@ -3,130 +3,153 @@ package com.skyziyou
 import com.skyziyou.features.alert.ScreenAlertsScreen
 import com.skyziyou.features.chat.ChatRulesScreen
 import com.skyziyou.features.command.CommandAliasesScreen
+import com.skyziyou.features.highlight.EntityHighlightsScreen
 import com.skyziyou.features.mineshaft.MineshaftCorpseScreen
 import com.skyziyou.features.party.AutoInviteConfigScreen
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 
 /**
- * Main config menu, SkyHanni-style: a category list where every feature area owns
- * its own sub-page. Opened via the /skyziyou and /sz client commands.
- *
- * Sub-pages extend [BaseConfigScreen], which centralises saving-on-close and the
- * navigation back to this menu.
+ * Every page reachable from the config sidebar. [titleKey] matches the key a page
+ * passes to [BaseConfigScreen] so the shell can highlight the active tab. The first
+ * entry is what `/sz` opens.
  */
-class ConfigScreen : Screen(Component.literal("Skyziyou Settings")) {
+enum class ConfigCategory(
+    val titleKey: String,
+    val descKey: String,
+    val factory: () -> BaseConfigScreen,
+) {
+    WHEEL("cat.wheel", "cat.wheel.desc", { WheelConfigScreen() }),
+    SHORTCUTS("cat.shortcuts", "cat.shortcuts.desc", { ShortcutsScreen() }),
+    CHAT_RULES("cat.chatrules", "cat.chatrules.desc", { ChatRulesScreen() }),
+    ALIASES("aliases.title", "cat.aliases.desc", { CommandAliasesScreen() }),
+    ALERTS("cat.alerts", "cat.alerts.desc", { ScreenAlertsScreen() }),
+    CORPSES("corpses.title", "cat.corpses.desc", { MineshaftCorpseScreen() }),
+    INVITE("cat.invite", "cat.invite.desc", { AutoInviteConfigScreen() }),
+    HIGHLIGHTS("cat.highlights", "cat.highlights.desc", { EntityHighlightsScreen() }),
+}
 
-    private class Category(
-        val label: String,
-        val description: String,
-        val factory: () -> Screen,
-    )
+/**
+ * Shared shell for every config page, SkyHanni-style: a flat dark background with a
+ * fixed left [SkyTheme.SIDEBAR_W]-wide category sidebar (wordmark, category tabs with
+ * the active one marked by a green edge, language toggle and Done at the bottom) and
+ * a content area on the right where subclasses lay out their widgets via [buildPage].
+ *
+ * Pages are still separate [Screen]s (switching a tab just opens another page), which
+ * keeps every existing list editor (rules, alerts, highlights, ...) unchanged in
+ * structure — only their anchor coordinates move from the screen centre to
+ * [pageCX] / [centerX].
+ */
+abstract class BaseConfigScreen(private val titleKey: String) : Screen(Component.literal("")) {
 
-    private val categories = listOf(
-        Category(
-            "Command Wheel",
-            "Wheel slots, trigger key and behaviour.",
-        ) { WheelConfigScreen() },
-        Category(
-            "Custom Shortcuts",
-            "Bind keys directly to commands or chat.",
-        ) { ShortcutsScreen() },
-        Category(
-            "Custom Chat Rules",
-            "Match chat text, auto-reply or run commands.",
-        ) { ChatRulesScreen() },
-        Category(
-            "Command Aliases",
-            "Rewrite a typed command into another one.",
-        ) { CommandAliasesScreen() },
-        Category(
-            "Screen Alerts",
-            "Show a banner on screen when chat text appears.",
-        ) { ScreenAlertsScreen() },
-        Category(
-            "Mineshaft Corpses",
-            "Post corpse counts to party chat in mineshafts.",
-        ) { MineshaftCorpseScreen() },
-        Category(
-            "Auto Party Invite",
-            "Auto-invite players that PM you !invite.",
-        ) { AutoInviteConfigScreen() },
-    )
+    protected val pageX: Int get() = SkyTheme.SIDEBAR_W + 8
+    protected val pageW: Int get() = width - SkyTheme.SIDEBAR_W - 16
+    protected val pageCX: Int get() = pageX + pageW / 2
 
-    override fun init() {
-        // two-column category grid so seven categories fit small GUI scales
-        val colW = 220
-        val gap = 10
-        val rowH = 34
-        val startY = 70
-        val rowsPerCol = (categories.size + 1) / 2
-        val gridLeft = width / 2 - (colW * 2 + gap) / 2
+    /** Left X for a content widget of [w] pixels so it is centred in the content area. */
+    protected fun centerX(w: Int): Int = pageCX - w / 2
 
-        categories.forEachIndexed { index, category ->
-            val col = index / rowsPerCol
-            val row = index % rowsPerCol
-            val x = gridLeft + col * (colW + gap)
+    /** Localised page title drawn by the shell at the top of the content area. */
+    protected fun titleText(): String = I18n.t(titleKey)
+
+    /**
+     * Subclasses populate their content widgets here. Called after the shell has put
+     * the sidebar together in [init]; do not override init itself.
+     */
+    protected open fun buildPage() {}
+
+    final override fun init() {
+        val tabW = SkyTheme.SIDEBAR_W - 12
+        ConfigCategory.entries.forEachIndexed { index, category ->
             addRenderableWidget(
-                Button.builder(Component.literal(category.label)) {
+                SkyButton(
+                    6,
+                    30 + index * 24,
+                    tabW,
+                    20,
+                    Component.literal(I18n.t(category.titleKey)),
+                    style = SkyButton.Style.TAB,
+                    accent = category.titleKey == titleKey,
+                ) {
                     //~ if < 26.2 'minecraft.gui.setScreen' -> 'minecraft.setScreen'
                     minecraft.gui.setScreen(category.factory())
-                }.bounds(x, startY + row * rowH, colW, 20).build(),
+                },
             )
         }
 
         addRenderableWidget(
-            Button.builder(Component.literal("Done")) { onClose() }
-                .bounds(width / 2 - 100, height - 30, 200, 20)
-                .build(),
+            SkyButton(
+                6,
+                height - 52,
+                tabW,
+                20,
+                Component.literal(I18n.t("common.language_button")),
+            ) {
+                SkyziyouConfig.language = if (I18n.isZh()) I18n.EN else I18n.ZH
+                I18n.language = SkyziyouConfig.language
+                SkyziyouConfig.save()
+                rebuildWidgets()
+            },
         )
+        addRenderableWidget(
+            SkyButton(
+                6,
+                height - 28,
+                tabW,
+                20,
+                Component.literal(I18n.t("common.done")),
+            ) { onClose() },
+        )
+
+        buildPage()
     }
-
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        val text = title.string
-        graphics.text(font, text, width / 2 - font.width(text) / 2, 15, -1, false)
-
-        val colW = 220
-        val gap = 10
-        val rowH = 34
-        val startY = 70
-        val rowsPerCol = (categories.size + 1) / 2
-        val gridLeft = width / 2 - (colW * 2 + gap) / 2
-        categories.forEachIndexed { index, category ->
-            val col = index / rowsPerCol
-            val row = index % rowsPerCol
-            val centerX = gridLeft + col * (colW + gap) + colW / 2
-            val desc = "§7${category.description}"
-            graphics.text(font, desc, centerX - font.width(desc) / 2, startY + row * rowH + 23, -1, false)
-        }
-    }
-}
-
-/**
- * Shared base for every config sub-page: persists the config and returns to the
- * [ConfigScreen] category menu whenever the page closes (Back button or Esc).
- */
-abstract class BaseConfigScreen(title: Component) : Screen(title) {
 
     override fun onClose() {
         SkyziyouConfig.save()
+        // closing the config (Esc / Done) returns to the game; tabs navigate directly
         //~ if < 26.2 'minecraft.gui.setScreen' -> 'minecraft.setScreen'
-        minecraft.gui.setScreen(ConfigScreen())
+        minecraft.gui.setScreen(null)
     }
 
-    /** Adds the standard bottom-centre Back button that closes into the category menu. */
-    protected fun addBackButton() {
-        addRenderableWidget(
-            Button.builder(Component.literal("Back")) { onClose() }
-                .bounds(width / 2 - 100, height - 30, 200, 20)
-                .build(),
-        )
+    override fun extractRenderState(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        partialTick: Float,
+    ) {
+        graphics.fill(0, 0, width, height, SkyTheme.BG)
+        graphics.fill(0, 0, SkyTheme.SIDEBAR_W, height, SkyTheme.SIDEBAR_BG)
+        graphics.fill(SkyTheme.SIDEBAR_W, 0, SkyTheme.SIDEBAR_W + 1, height, 0xFF000000.toInt())
+        graphics.text(font, "§lSkyziyou", 10, 12, SkyTheme.TEXT, false)
+
+        // widgets (sidebar tabs + page content)
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick)
+
+        // content title
+        val title = titleText()
+        graphics.text(font, title, pageCX - font.width(title) / 2, 10, SkyTheme.TEXT, false)
+
+        renderSidebarTooltip(graphics, mouseX, mouseY)
     }
 
-    /** Creates an ON/OFF button that flips its captured value and writes through [onChange]. */
+    /** Hovering a sidebar tab shows its localised description next to the cursor. */
+    private fun renderSidebarTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (mouseX > SkyTheme.SIDEBAR_W) return
+        val index = ConfigCategory.entries.indexOfFirst {
+            val ty = 30 + it.ordinal * 24
+            mouseX in 6..(6 + SkyTheme.SIDEBAR_W - 12) && mouseY in ty..(ty + 20)
+        }
+        if (index < 0) return
+        val desc = I18n.t(ConfigCategory.entries[index].descKey)
+        val w = font.width(desc) + 8
+        val x = SkyTheme.SIDEBAR_W + 4
+        val y = (mouseY - 12).coerceIn(4, height - 16)
+        graphics.fill(x, y, x + w, y + 14, 0xF0202028.toInt())
+        graphics.text(font, desc, x + 4, y + 3, SkyTheme.TEXT, false)
+    }
+
+    /** SkyHanni-style ON/OFF toggle (label left, green check / red cross right). */
     protected fun toggleButton(
         label: String,
         initial: Boolean,
@@ -134,13 +157,9 @@ abstract class BaseConfigScreen(title: Component) : Screen(title) {
         y: Int,
         w: Int,
         onChange: (Boolean) -> Unit,
-    ): Button {
-        var value = initial
-        fun text() = Component.literal("$label: ${if (value) "ON" else "OFF"}")
-        return Button.builder(text()) { button ->
-            value = !value
-            onChange(value)
-            button.message = text()
-        }.bounds(x, y, w, 20).build()
-    }
+    ): SkyToggle = SkyToggle(x, y, w, 20, label, initial, onChange)
+
+    /** Compact 22px check/cross switch for the on/off column of editor list rows. */
+    protected fun checkButton(x: Int, y: Int, initial: Boolean, onChange: (Boolean) -> Unit): SkyToggle =
+        SkyToggle(x, y, 22, 20, "", initial, onChange)
 }

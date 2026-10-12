@@ -2,9 +2,11 @@ package com.skyziyou.features.command
 
 import com.skyziyou.BaseConfigScreen
 import com.skyziyou.CommandAliasEntry
+import com.skyziyou.I18n
+import com.skyziyou.SkyButton
+import com.skyziyou.SkyTheme
 import com.skyziyou.SkyziyouConfig
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.network.chat.Component
 
@@ -14,7 +16,7 @@ import net.minecraft.network.chat.Component
  * plus an on/off switch and a delete button. A target starting with '/' runs as a
  * command; anything else is sent as a chat message.
  */
-class CommandAliasesScreen : BaseConfigScreen(Component.literal("Custom Command Aliases")) {
+class CommandAliasesScreen : BaseConfigScreen("aliases.title") {
 
     private var scroll = 0
 
@@ -22,19 +24,19 @@ class CommandAliasesScreen : BaseConfigScreen(Component.literal("Custom Command 
     // toggles end at y=46, column headers occupy 48-57, first row starts at 58
     private val startY = 58
 
-    override fun init() {
-        val left = width / 2 - 183
+    override fun buildPage() {
+        val left = centerX(344)
         val entries = SkyziyouConfig.aliases
         scroll = scroll.coerceIn(0, maxScroll())
 
         // two master toggles above the list
         addRenderableWidget(
-            toggleButton("Enabled", SkyziyouConfig.aliasesEnabled, left, 26, 116) {
+            toggleButton(I18n.t("common.enabled"), SkyziyouConfig.aliasesEnabled, left, 26, 116) {
                 SkyziyouConfig.aliasesEnabled = it
             },
         )
         addRenderableWidget(
-            toggleButton("Log", SkyziyouConfig.aliasesLog, left + 120, 26, 116) {
+            toggleButton(I18n.t("common.log"), SkyziyouConfig.aliasesLog, left + 120, 26, 116) {
                 SkyziyouConfig.aliasesLog = it
             },
         )
@@ -47,54 +49,49 @@ class CommandAliasesScreen : BaseConfigScreen(Component.literal("Custom Command 
             val alias = entries[index]
 
             addRenderableWidget(
-                Button.builder(onOffLabel(alias)) {
-                    alias.enabled = !alias.enabled
-                    it.message = onOffLabel(alias)
-                }.bounds(left, y, 22, 20).build(),
+                checkButton(left, y, alias.enabled) { alias.enabled = it },
             )
 
-            val typedBox = EditBox(font, left + 26, y, 164, 20, Component.empty())
+            val typedBox = EditBox(font, left + 26, y, 150, 20, Component.empty())
             typedBox.setMaxLength(128)
             typedBox.value = alias.alias
-            typedBox.setHint(Component.literal("type this, e.g. /home"))
+            typedBox.setHint(Component.literal(I18n.t("aliases.typed_hint")))
             typedBox.setResponder { alias.alias = it }
             addRenderableWidget(typedBox)
 
-            val targetBox = EditBox(font, left + 194, y, 152, 20, Component.empty())
+            val targetBox = EditBox(font, left + 180, y, 140, 20, Component.empty())
             targetBox.setMaxLength(256)
             targetBox.value = alias.target
-            targetBox.setHint(Component.literal("runs this: /cmd or chat"))
+            targetBox.setHint(Component.literal(I18n.t("aliases.target_hint")))
             targetBox.setResponder { alias.target = it }
             addRenderableWidget(targetBox)
 
             addRenderableWidget(
-                Button.builder(Component.literal("X")) {
+                SkyButton(
+                    left + 324, y, 20, 20, Component.literal("X"),
+                    style = SkyButton.Style.DANGER,
+                ) {
                     entries.removeAt(index)
                     rebuildWidgets()
-                }.bounds(left + 346, y, 20, 20).build(),
+                },
             )
         }
 
         addRenderableWidget(
-            Button.builder(Component.literal("Add Alias")) {
+            SkyButton(centerX(200), height - 30, 200, 20, Component.literal(I18n.t("aliases.add"))) {
                 entries.add(CommandAliasEntry())
                 scroll = maxScroll()
                 rebuildWidgets()
-            }.bounds(width / 2 - 150, height - 55, 145, 20).build(),
-        )
-        addRenderableWidget(
-            Button.builder(Component.literal("Back")) { onClose() }
-                .bounds(width / 2 + 5, height - 55, 145, 20).build(),
+            },
         )
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        val left = width / 2 - 183
-        graphics.text(font, title.string, width / 2 - font.width(title.string) / 2, 8, -1, false)
-        graphics.text(font, "§7typed command (exact match)", left + 26, startY - 10, -1, false)
-        graphics.text(font, "§7runs instead", left + 194, startY - 10, -1, false)
-        graphics.text(font, "§7Exact match only: extra arguments are not forwarded · target: '/' = command, otherwise chat", left, height - 70, -1, false)
+        val left = centerX(344)
+        graphics.text(font, I18n.t("aliases.header_typed"), left + 26, startY - 10, SkyTheme.TEXT_DIM, false)
+        graphics.text(font, I18n.t("aliases.header_target"), left + 180, startY - 10, SkyTheme.TEXT_DIM, false)
+        graphics.text(font, I18n.t("aliases.footer"), left, height - 70, SkyTheme.TEXT_DIM, false)
     }
 
     override fun mouseScrolled(
@@ -114,7 +111,4 @@ class CommandAliasesScreen : BaseConfigScreen(Component.literal("Custom Command 
     private fun visibleRows(): Int = ((height - startY - 80) / rowH).coerceAtLeast(1)
 
     private fun maxScroll(): Int = (SkyziyouConfig.aliases.size - visibleRows()).coerceAtLeast(0)
-
-    private fun onOffLabel(alias: CommandAliasEntry): Component =
-        Component.literal(if (alias.enabled) "§aON" else "§cOFF")
 }

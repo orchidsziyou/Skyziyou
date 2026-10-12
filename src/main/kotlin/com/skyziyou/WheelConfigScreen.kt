@@ -1,6 +1,7 @@
 package com.skyziyou
 
 import com.mojang.blaze3d.platform.InputConstants
+import net.minecraft.client.Minecraft
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -11,10 +12,10 @@ import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
 /**
- * "Command Wheel" settings sub-page, reached from the [ConfigScreen] category menu.
+ * "Command Wheel" settings sub-page, reached from the [BaseConfigScreen] sidebar.
  * Changes are applied instantly and saved on close ([BaseConfigScreen]).
  */
-class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
+class WheelConfigScreen : BaseConfigScreen("cat.wheel") {
 
     private val slotBoxes = mutableListOf<EditBox>()
 
@@ -24,28 +25,30 @@ class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
     /** While true, the next key press or mouse click is captured as the new keybind. */
     private var listeningForKey = false
 
-    override fun init() {
-        val colW = 200
-        val left = width / 2 - colW - 10
-        val right = width / 2 + 10
-        val halfW = 95
-        val rightMid = width / 2 + 115
+    override fun buildPage() {
+        // compacted to fit the content area next to the sidebar: left controls column,
+        // right side splits the remaining width between the two slot boxes per row
+        val colW = 150
+        val halfW = (pageW - colW - 20) / 2
+        val left = pageX
+        val right = left + colW + 10
+        val rightMid = right + halfW + 10
         val rowH = 26
         val startY = 45
 
         // left column: keybind + toggles + sliders
-        keybindWidget = Button.builder(keybindLabel()) {
+        keybindWidget = SkyButton(left, startY, colW, 20, keybindLabel()) {
             listeningForKey = true
-            it.message = Component.literal("Wheel Keybind: press any key...")
-        }.bounds(left, startY, colW, 20).build()
+            it.message = Component.literal(I18n.t("wheel.keybind_listening"))
+        }
         addRenderableWidget(keybindWidget)
 
         addRenderableWidget(
-            toggleButton("Enabled", SkyziyouConfig.enabled, left, startY + rowH, colW) { SkyziyouConfig.enabled = it },
+            toggleButton(I18n.t("common.enabled"), SkyziyouConfig.enabled, left, startY + rowH, colW) { SkyziyouConfig.enabled = it },
         )
         addRenderableWidget(
             toggleButton(
-                "Execute On Release",
+                I18n.t("wheel.execute_on_release"),
                 SkyziyouConfig.executeOnRelease,
                 left,
                 startY + rowH * 2,
@@ -54,7 +57,7 @@ class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
         )
         addRenderableWidget(
             toggleButton(
-                "Execution Log",
+                I18n.t("wheel.execution_log"),
                 SkyziyouConfig.showLogMessage,
                 left,
                 startY + rowH * 3,
@@ -62,22 +65,22 @@ class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
             ) { SkyziyouConfig.showLogMessage = it },
         )
         addRenderableWidget(
-            slider("Dead Zone", SkyziyouConfig.deadZone, 10, 150, left, startY + rowH * 4, colW) {
+            slider(I18n.t("wheel.dead_zone"), SkyziyouConfig.deadZone, 10, 150, left, startY + rowH * 4, colW) {
                 SkyziyouConfig.deadZone = it
             },
         )
         addRenderableWidget(
-            slider("Wheel Size %", SkyziyouConfig.sizePercent, 50, 200, left, startY + rowH * 5, colW) {
+            slider(I18n.t("wheel.size_pct"), SkyziyouConfig.sizePercent, 50, 200, left, startY + rowH * 5, colW) {
                 SkyziyouConfig.sizePercent = it
             },
         )
         addRenderableWidget(
-            slider("Font Size %", SkyziyouConfig.fontScalePercent, 50, 200, left, startY + rowH * 6, colW) {
+            slider(I18n.t("wheel.font_pct"), SkyziyouConfig.fontScalePercent, 50, 200, left, startY + rowH * 6, colW) {
                 SkyziyouConfig.fontScalePercent = it
             },
         )
         addRenderableWidget(
-            slider("Timeout s", SkyziyouConfig.timeoutSeconds, 3, 30, left, startY + rowH * 7, colW) {
+            slider(I18n.t("wheel.timeout_s"), SkyziyouConfig.timeoutSeconds, 3, 30, left, startY + rowH * 7, colW) {
                 SkyziyouConfig.timeoutSeconds = it
             },
         )
@@ -96,14 +99,6 @@ class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
             slotBoxes.add(box)
             addRenderableWidget(box)
         }
-
-        addBackButton()
-    }
-
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        val text = title.string
-        graphics.text(font, text, width / 2 - font.width(text) / 2, 15, -1, false)
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
@@ -132,16 +127,16 @@ class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
         return super.mouseClicked(event, doubleClick)
     }
 
-    /** Button caption showing the current keybind, or "not set" when unbound. */
+    /** Button caption showing the current keybind, or the localised "not set" when unbound. */
     private fun keybindLabel(): Component {
         val key = SkyziyouConfig.keybind
         val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
-            "not set"
+            I18n.t("common.not_set")
         } else {
             val type = if (key in 0..7) InputConstants.Type.MOUSE else InputConstants.Type.KEYSYM
             type.getOrCreate(key).displayName.string
         }
-        return Component.literal("Wheel Keybind: $name")
+        return Component.literal(I18n.t("wheel.keybind", name))
     }
 
     /** Creates a slider mapping the 0-1 handle position onto [min, max], writing the rounded value through [onChange]. */
@@ -158,6 +153,29 @@ class WheelConfigScreen : BaseConfigScreen(Component.literal("Command Wheel")) {
 
             override fun applyValue() {
                 onChange((min + (value * (max - min))).toInt())
+            }
+
+            // flat dark track + knob to match the SkyHanni-style theme; drag logic stays vanilla
+            // AbstractSliderButton extends AbstractWidget directly, so the hook is named differently
+            override fun extractWidgetRenderState(
+                graphics: GuiGraphicsExtractor,
+                mouseX: Int,
+                mouseY: Int,
+                partialTick: Float,
+            ) {
+                graphics.fill(x, y, x + width, y + height, SkyTheme.BTN_BG)
+                val knobCenter = x + 4 + (value * (width - 8)).toInt()
+                graphics.fill(
+                    knobCenter - 4, y + 1, knobCenter + 4, y + height - 1,
+                    if (active && isHoveredOrFocused) SkyTheme.ROW_HOVER else SkyTheme.BTN_HOVER,
+                )
+                graphics.centeredText(
+                    Minecraft.getInstance().font,
+                    message,
+                    x + width / 2,
+                    y + (height - 8) / 2,
+                    if (active) SkyTheme.TEXT else SkyTheme.TEXT_DIM,
+                )
             }
         }
     }

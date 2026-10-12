@@ -1,62 +1,61 @@
 package com.skyziyou.features.mineshaft
 
 import com.skyziyou.BaseConfigScreen
+import com.skyziyou.I18n
+import com.skyziyou.SkyTheme
 import com.skyziyou.SkyziyouConfig
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.network.chat.Component
 
 /**
- * Settings sub-page for [MineshaftCorpseReporter]: a master switch and the
- * Hypixel-only restriction, plus a short explanation of the message format.
+ * Settings page for [MineshaftCorpseReporter]: a master switch, the Hypixel-only
+ * restriction and the detailed/brief format toggle, plus the message examples.
  */
-class MineshaftCorpseScreen : BaseConfigScreen(Component.literal("Mineshaft Corpse Report")) {
+class MineshaftCorpseScreen : BaseConfigScreen("corpses.title") {
 
-    override fun init() {
-        val colW = 240
-        val x = width / 2 - colW / 2
+    override fun buildPage() {
+        val colW = 260
+        val x = centerX(colW)
         val rowH = 26
-        val startY = 60
+        val startY = 50
 
         addRenderableWidget(
             toggleButton(
-                "Enabled",
+                I18n.t("common.enabled"),
                 SkyziyouConfig.corpseReportEnabled,
                 x, startY, colW,
             ) { SkyziyouConfig.corpseReportEnabled = it },
         )
         addRenderableWidget(
             toggleButton(
-                "Hypixel Only",
+                I18n.t("common.hypixel_only"),
                 SkyziyouConfig.corpseReportHypixelOnly,
                 x, startY + rowH, colW,
             ) { SkyziyouConfig.corpseReportHypixelOnly = it },
         )
         addRenderableWidget(
             toggleButton(
-                "Detailed Format",
+                I18n.t("corpses.detailed"),
                 SkyziyouConfig.corpseReportDetailed,
                 x, startY + rowH * 2, colW,
             ) { SkyziyouConfig.corpseReportDetailed = it },
         )
-
-        addBackButton()
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
-        graphics.text(font, title.string, width / 2 - font.width(title.string) / 2, 15, -1, false)
 
+        // the actual /pc message examples stay English on purpose: that is exactly what gets sent
         val lines = listOf(
-            "§7Reads the §fFrozen Corpses §7tab widget right after entering a mineshaft",
-            "§7and sends the corpse counts to party chat once via §f/pc§7.",
+            I18n.t("corpses.line1"),
+            I18n.t("corpses.line2"),
             "",
-            "§7Detailed: §f/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard",
-            "§7Brief:    §f/pc Corpses (4): 2l 1u 1vg",
-            "§7Tokens: §9l §7=Lapis  §8t §7=Tungsten  §6u §7=Umber  §fvg §7=Vanguard",
+            I18n.t("corpses.line4"),
+            I18n.t("corpses.line5"),
+            I18n.t("corpses.line6"),
         )
         var y = height - 90
         for (line in lines) {
-            graphics.text(font, line, width / 2 - font.width(line) / 2, y, -1, false)
+            graphics.text(font, line, pageCX - font.width(line) / 2, y, SkyTheme.TEXT_DIM, false)
             y += 12
         }
     }

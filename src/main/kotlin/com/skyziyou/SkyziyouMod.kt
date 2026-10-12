@@ -5,6 +5,7 @@ import com.skyziyou.features.alert.ScreenAlerts
 import com.skyziyou.features.chat.ChatClassifier
 import com.skyziyou.features.chat.ChatRulesFeature
 import com.skyziyou.features.command.CommandAliases
+import com.skyziyou.features.highlight.EntityHighlights
 import com.skyziyou.features.mineshaft.MineshaftCorpseReporter
 import com.skyziyou.features.party.AutoInviteFeature
 import net.fabricmc.api.ClientModInitializer
@@ -35,8 +36,9 @@ object SkyziyouMod : ClientModInitializer {
         CommandAliases.register()
         MineshaftCorpseReporter.register()
         ScreenAlerts.register()
+        EntityHighlights.register()
 
-        // /skyziyou and /sz both open the settings category screen
+        // /skyziyou and /sz both open the first config page (sidebar shell)
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
                 ClientCommands.literal("skyziyou").executes { ctx ->
@@ -56,6 +58,6 @@ object SkyziyouMod : ClientModInitializer {
     private fun openConfigScreen(mc: Minecraft) {
         // command handlers may not run on render thread, so hop over via execute
         //~ if < 26.2 'mc.gui.setScreen' -> 'mc.setScreen'
-        mc.execute { mc.gui.setScreen(ConfigScreen()) }
+        mc.execute { mc.gui.setScreen(ConfigCategory.entries.first().factory()) }
     }
 }

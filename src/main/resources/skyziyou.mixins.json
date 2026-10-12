@@ -4,6 +4,7 @@
     "compatibilityLevel": "JAVA_21",
     "client": [
         "ClientCommonPacketListenerAccessor",
+        "EntityAccessor",
         "MixinMouseHandler"
     ],
     "injectors": {
