@@ -308,9 +308,15 @@ object EntityHighlights {
     private fun applyGlow(level: ClientLevel, entity: LivingEntity, colorName: String) {
         glowing[entity.id]?.let { if (it.colorName != colorName) removeFromTeam(level, it) }
         val team = teamFor(level, colorName)
-        // addPlayerToTeam fails only if the entry already belongs to a (server) team;
-        // in that case it keeps that team's colour and the glow flag alone applies
-        level.scoreboard.addPlayerToTeam(entity.scoreboardName, team)
+        // Membership can move out from under us between scans: Hypixel itself puts some
+        // mobs on scoreboard teams, and other glow mods (SkyHanni/SBA/...) may own the
+        // holder too. addPlayerToTeam throws if it already belongs to ANY team, so only
+        // claim holders that are currently unassigned; an externally owned holder keeps
+        // its team's colour while the glow flag alone still gives it a white outline.
+        val currentTeam = level.scoreboard.getPlayersTeam(entity.scoreboardName)
+        if (currentTeam == null) {
+            level.scoreboard.addPlayerToTeam(entity.scoreboardName, team)
+        }
         glowing[entity.id] = Glow(colorName, entity.scoreboardName)
         entity.setGlowFlag(true)
     }
@@ -339,9 +345,18 @@ object EntityHighlights {
         return team
     }
 
+    /**
+     * Removes the glow membership, but only when the holder is still on OUR team
+     * object. The server (team join/leave packets on Hypixel) or another glow mod
+     * may have moved the holder to another team or removed it meanwhile; the 2-arg
+     * removePlayerFromTeam throws IllegalStateException in that case and crashes the
+     * game, so the identity check is mandatory.
+     */
     private fun removeFromTeam(level: ClientLevel, glow: Glow) {
         val team = teams[glow.colorName] ?: return
-        level.scoreboard.removePlayerFromTeam(glow.scoreName, team)
+        if (level.scoreboard.getPlayersTeam(glow.scoreName) === team) {
+            level.scoreboard.removePlayerFromTeam(glow.scoreName, team)
+        }
     }
 
     /** Feature disabled: undo every highlight; empty teams stay registered harmlessly. */
