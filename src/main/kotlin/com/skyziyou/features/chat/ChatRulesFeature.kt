@@ -22,6 +22,14 @@ object ChatRulesFeature {
 
     private const val RULE_COOLDOWN_MS = 3_000L
 
+    /**
+     * Max chat-line length fed to a USER-supplied regex. A pathological pattern
+     * (catastrophic backtracking such as "(a+)+") could otherwise stall the client
+     * thread; Hypixel chat lines are never longer than this anyway, so matching is
+     * unaffected while the worst-case cost is bounded.
+     */
+    private const val MAX_REGEX_INPUT = 256
+
     /** `[me]` token inside a regex pattern, replaced with the escaped local player name. */
     private val mePlaceholderRegex = Regex("""\[me]""", RegexOption.IGNORE_CASE)
 
@@ -66,7 +74,7 @@ object ChatRulesFeature {
             // regex groups captured for $1..$9 substitution; null in plain contains mode
             val match: MatchResult? = if (rule.regex) {
                 val regex = compile(effectivePattern, rule.ignoreCase) ?: return@forEachIndexed
-                regex.find(chat.message) ?: return@forEachIndexed
+                regex.find(chat.message.take(MAX_REGEX_INPUT)) ?: return@forEachIndexed
             } else {
                 if (!chat.message.contains(effectivePattern, ignoreCase = rule.ignoreCase)) return@forEachIndexed
                 null

@@ -13,6 +13,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.npc.villager.AbstractVillager
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.scores.PlayerTeam
+import net.minecraft.world.scores.Scoreboard
 import kotlin.math.sqrt
 
 /**
@@ -91,6 +92,9 @@ object EntityHighlights {
     /** Level whose scoreboard [teams] belong to; a different level forces a cache reset. */
     private var teamLevel: ClientLevel? = null
 
+    /** Scoreboard instance [teams] are registered on; it can change even while the level object stays. */
+    private var teamScoreboard: Scoreboard? = null
+
     /** Last seen signature of the highlight config; a change forces one full world scan. */
     private var configSignature: String? = null
 
@@ -120,19 +124,27 @@ object EntityHighlights {
     private fun onTick() {
         val level = mc.level
         if (level == null) {
+            detachAll(teamScoreboard)
             glowing.clear()
             pending.clear()
             teams.clear()
             teamLevel = null
+            teamScoreboard = null
             configSignature = null
             tickCounter = 0
             return
         }
-        // scoreboard object is replaced on world change / relog; our fake teams die with it
-        if (level !== teamLevel) {
+        // Both the level and the scoreboard object can be replaced (world change,
+        // relog, lobby switch on BungeeCord); vanilla sometimes keeps the SAME
+        // scoreboard across a respawn, in which case our teams survive but their old
+        // members (UUIDs from the previous world) must be detached before the rescan.
+        val board = level.scoreboard
+        if (level !== teamLevel || board !== teamScoreboard) {
+            detachAll(teamScoreboard)
             glowing.clear()
             teams.clear()
             teamLevel = level
+            teamScoreboard = board
             // world join: entities already present must get one full scan;
             // entities arriving afterwards are handled through ENTITY_LOAD
             configSignature = null
@@ -211,7 +223,16 @@ object EntityHighlights {
                 iterator.remove()
                 continue
             }
-            (entity as? LivingEntity)?.setGlowFlag(true)
+            val living = entity as? LivingEntity
+            // numeric entity ids get recycled after despawn; if a different entity now
+            // holds this id, drop the stale membership instead of glowing the newcomer
+            // until the next rescan (its own UUID will be matched independently)
+            if (living == null || living.scoreboardName != glow.scoreName) {
+                removeFromTeam(level, glow)
+                iterator.remove()
+                continue
+            }
+            living.setGlowFlag(true)
         }
     }
 
@@ -241,7 +262,10 @@ object EntityHighlights {
             val (entityId, glow) = iterator.next()
             if (wanted.containsKey(entityId)) continue
             removeFromTeam(level, glow)
-            (level.getEntity(entityId) as? LivingEntity)?.setGlowFlag(false)
+            // only clear the flag of the SAME entity; an id reused by another entity
+            // already has default (unset) flags and must not be touched here
+            val entity = level.getEntity(entityId) as? LivingEntity
+            if (entity != null && entity.scoreboardName == glow.scoreName) entity.setGlowFlag(false)
             iterator.remove()
         }
     }
@@ -336,10 +360,13 @@ object EntityHighlights {
         val scoreboard = level.scoreboard
         val teamName = TEAM_PREFIX + colorName
         // reuse if one somehow already exists, otherwise create + colour it;
-        // 26.2 decoupled team colour from ChatFormatting into a TeamColor enum wrapped in Optional
+        // 26.2 decoupled team colour from ChatFormatting into a TeamColor enum wrapped in Optional.
+        // valueOf is guarded: a corrupt/hand-edited config with an unknown colour name
+        // must fall back to RED instead of throwing IllegalArgumentException on tick.
+        //~ if < 26.2 'java.util.Optional.of(runCatching { net.minecraft.world.scores.TeamColor.valueOf(colorName) }.getOrDefault(net.minecraft.world.scores.TeamColor.RED))' -> 'runCatching { ChatFormatting.valueOf(colorName) }.getOrDefault(ChatFormatting.RED)'
+        val fallback = java.util.Optional.of(runCatching { net.minecraft.world.scores.TeamColor.valueOf(colorName) }.getOrDefault(net.minecraft.world.scores.TeamColor.RED))
         val team = scoreboard.getPlayerTeam(teamName) ?: scoreboard.addPlayerTeam(teamName).apply {
-            //~ if < 26.2 'java.util.Optional.of(net.minecraft.world.scores.TeamColor.valueOf(colorName))' -> 'ChatFormatting.valueOf(colorName)'
-            color = java.util.Optional.of(net.minecraft.world.scores.TeamColor.valueOf(colorName))
+            color = fallback
         }
         teams[colorName] = team
         return team
@@ -353,9 +380,24 @@ object EntityHighlights {
      * game, so the identity check is mandatory.
      */
     private fun removeFromTeam(level: ClientLevel, glow: Glow) {
+        removeFromBoard(level.scoreboard, glow)
+    }
+
+    private fun removeFromBoard(board: Scoreboard, glow: Glow) {
         val team = teams[glow.colorName] ?: return
-        if (level.scoreboard.getPlayersTeam(glow.scoreName) === team) {
-            level.scoreboard.removePlayerFromTeam(glow.scoreName, team)
+        if (board.getPlayersTeam(glow.scoreName) === team) {
+            board.removePlayerFromTeam(glow.scoreName, team)
+        }
+    }
+
+    /** Detaches every tracked membership from [board] (used on world/scoreboard teardown). */
+    private fun detachAll(board: Scoreboard?) {
+        if (board == null || glowing.isEmpty()) return
+        for (glow in glowing.values) {
+            val team = teams[glow.colorName] ?: continue
+            if (board.getPlayersTeam(glow.scoreName) === team) {
+                board.removePlayerFromTeam(glow.scoreName, team)
+            }
         }
     }
 
