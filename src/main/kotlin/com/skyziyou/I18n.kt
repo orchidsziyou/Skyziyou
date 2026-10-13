@@ -42,6 +42,8 @@ object I18n {
 
         // main menu
         "main.title" to "Skyziyou Settings",
+        "cat.general" to "General",
+        "cat.general.desc" to "Mod information and links.",
         "cat.wheel" to "Command Wheel",
         "cat.wheel.desc" to "Wheel slots, trigger key and behaviour.",
         "cat.shortcuts" to "Custom Shortcuts",
@@ -58,6 +60,19 @@ object I18n {
         "cat.invite.desc" to "Auto-invite players that PM you !invite.",
         "cat.highlights" to "Entity Highlights",
         "cat.highlights.desc" to "Glow living mobs by their name.",
+
+        // general page
+        "general.version" to "§7Version §f{0}",
+        "general.line1" to "§7Hypixel SkyBlock utility mod.",
+        "general.line2" to "§7Wheel, shortcuts, chat rules, highlights and more.",
+        "general.open_github" to "Open GitHub Page",
+        "general.check_updates" to "Check for Updates",
+        "general.open_releases" to "Open Releases Page",
+        "general.update_idle" to "§7Click the button to check for a new version.",
+        "general.update_checking" to "§7Checking GitHub for updates…",
+        "general.update_latest" to "§aYou are up to date (v{0}).",
+        "general.update_available" to "New version v{0} available! Open the releases page to download.",
+        "general.update_failed" to "Update check failed: {0}",
 
         // command wheel page
         "wheel.keybind_listening" to "Wheel Keybind: press any key...",
@@ -142,6 +157,8 @@ object I18n {
 
         // main menu
         "main.title" to "Skyziyou 设置",
+        "cat.general" to "综述",
+        "cat.general.desc" to "模组信息与相关链接。",
         "cat.wheel" to "指令轮盘",
         "cat.wheel.desc" to "轮盘槽位、触发按键与行为设置。",
         "cat.shortcuts" to "自定义快捷键",
@@ -158,6 +175,19 @@ object I18n {
         "cat.invite.desc" to "私信你 !invite 时自动邀请入队。",
         "cat.highlights" to "实体高亮",
         "cat.highlights.desc" to "按生物名字给其添加发光轮廓。",
+
+        // general page
+        "general.version" to "§7版本 §f{0}",
+        "general.line1" to "§7Hypixel SkyBlock 功能辅助模组。",
+        "general.line2" to "§7轮盘、快捷键、聊天规则、实体高亮等功能。",
+        "general.open_github" to "打开 GitHub 页面",
+        "general.check_updates" to "检查更新",
+        "general.open_releases" to "打开 Releases 下载页",
+        "general.update_idle" to "§7点击按钮检查是否有新版本。",
+        "general.update_checking" to "§7正在向 GitHub 查询更新…",
+        "general.update_latest" to "§a当前已是最新版本（v{0}）。",
+        "general.update_available" to "发现新版本 v{0}！打开 Releases 页面下载。",
+        "general.update_failed" to "检查更新失败：{0}",
 
         // command wheel page
         "wheel.keybind_listening" to "轮盘按键：请按任意键…",

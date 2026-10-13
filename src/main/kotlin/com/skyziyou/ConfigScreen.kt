@@ -20,6 +20,7 @@ enum class ConfigCategory(
     val descKey: String,
     val factory: () -> BaseConfigScreen,
 ) {
+    GENERAL("cat.general", "cat.general.desc", { GeneralScreen() }),
     WHEEL("cat.wheel", "cat.wheel.desc", { WheelConfigScreen() }),
     SHORTCUTS("cat.shortcuts", "cat.shortcuts.desc", { ShortcutsScreen() }),
     CHAT_RULES("cat.chatrules", "cat.chatrules.desc", { ChatRulesScreen() }),
@@ -59,15 +60,33 @@ abstract class BaseConfigScreen(private val titleKey: String) : Screen(Component
      */
     protected open fun buildPage() {}
 
+    /**
+     * Page-specific background drawing (cards, info text), rendered after the shell
+     * background but BEFORE the widgets, so panels sit behind their buttons.
+     */
+    protected open fun drawBehind(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {}
+
+    private val tabStartY = 28
+
+    /** Vertical tab pitch, compressed on short windows so every tab + footer fits. */
+    private fun tabPitch(): Int {
+        val available = height - 48 - 6 - tabStartY
+        return (available / ConfigCategory.entries.size).coerceIn(15, 24)
+    }
+
+    private fun tabHeight(): Int = (tabPitch() - 3).coerceAtLeast(13).coerceAtMost(20)
+
+    private fun tabY(index: Int): Int = tabStartY + index * tabPitch()
+
     final override fun init() {
         val tabW = SkyTheme.SIDEBAR_W - 12
         ConfigCategory.entries.forEachIndexed { index, category ->
             addRenderableWidget(
                 SkyButton(
                     6,
-                    30 + index * 24,
+                    tabY(index),
                     tabW,
-                    20,
+                    tabHeight(),
                     Component.literal(I18n.t(category.titleKey)),
                     style = SkyButton.Style.TAB,
                     accent = category.titleKey == titleKey,
@@ -81,7 +100,7 @@ abstract class BaseConfigScreen(private val titleKey: String) : Screen(Component
         addRenderableWidget(
             SkyButton(
                 6,
-                height - 52,
+                height - 48,
                 tabW,
                 20,
                 Component.literal(I18n.t("common.language_button")),
@@ -95,7 +114,7 @@ abstract class BaseConfigScreen(private val titleKey: String) : Screen(Component
         addRenderableWidget(
             SkyButton(
                 6,
-                height - 28,
+                height - 26,
                 tabW,
                 20,
                 Component.literal(I18n.t("common.done")),
@@ -121,7 +140,10 @@ abstract class BaseConfigScreen(private val titleKey: String) : Screen(Component
         graphics.fill(0, 0, width, height, SkyTheme.BG)
         graphics.fill(0, 0, SkyTheme.SIDEBAR_W, height, SkyTheme.SIDEBAR_BG)
         graphics.fill(SkyTheme.SIDEBAR_W, 0, SkyTheme.SIDEBAR_W + 1, height, 0xFF000000.toInt())
-        graphics.text(font, "§lSkyziyou", 10, 12, SkyTheme.TEXT, false)
+        graphics.text(font, "§lSkyziyou", 10, 10, SkyTheme.TEXT, false)
+
+        // page cards/info text behind the widgets
+        drawBehind(graphics, mouseX, mouseY)
 
         // widgets (sidebar tabs + page content)
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
@@ -137,8 +159,8 @@ abstract class BaseConfigScreen(private val titleKey: String) : Screen(Component
     private fun renderSidebarTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (mouseX > SkyTheme.SIDEBAR_W) return
         val index = ConfigCategory.entries.indexOfFirst {
-            val ty = 30 + it.ordinal * 24
-            mouseX in 6..(6 + SkyTheme.SIDEBAR_W - 12) && mouseY in ty..(ty + 20)
+            val ty = tabY(it.ordinal)
+            mouseX in 6..(6 + SkyTheme.SIDEBAR_W - 12) && mouseY in ty..(ty + tabHeight())
         }
         if (index < 0) return
         val desc = I18n.t(ConfigCategory.entries[index].descKey)
