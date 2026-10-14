@@ -8,6 +8,7 @@ import com.skyziyou.features.command.CommandAliases
 import com.skyziyou.features.highlight.EntityHighlights
 import com.skyziyou.features.mineshaft.MineshaftCorpseReporter
 import com.skyziyou.features.party.AutoInviteFeature
+import com.skyziyou.features.sound.ChatSounds
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
@@ -32,6 +33,7 @@ object SkyziyouMod : ClientModInitializer {
         ChatClassifier.register()
         ActionQueue.register()
         ChatRulesFeature.register()
+        ChatSounds.register()
         AutoInviteFeature.register()
         CommandAliases.register()
         MineshaftCorpseReporter.register()

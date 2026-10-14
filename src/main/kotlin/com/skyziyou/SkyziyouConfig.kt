@@ -32,6 +32,25 @@ class ChatRuleEntry(
 )
 
 /**
+ * One chat sound rule: when [pattern] is found in a received chat line of the
+ * restricted [channel] (a [com.skyziyou.features.chat.ChatChannel] name), a
+ * built-in vanilla sound event identified by [sound] is played locally (2D UI
+ * sound). [sound] is the sound's identifier path under "minecraft:", e.g.
+ * "entity.cat.ambient"; see com.skyziyou.features.sound.SoundLibrary for the
+ * curated pick list. [regex] / [ignoreCase] work exactly like [ChatRuleEntry].
+ */
+class SoundRuleEntry(
+    var enabled: Boolean = true,
+    var pattern: String = "",
+    var sound: String = "entity.experience_orb.pickup",
+    var channel: String = "ANY",
+    var regex: Boolean = false,
+    var ignoreCase: Boolean = true,
+    /** How many times the sound plays on a match, 1..5 (spaced ~0.25s apart). */
+    var repeat: Int = 1,
+)
+
+/**
  * One screen alert: when [trigger] text is found in a received chat line of the
  * restricted [channel] (a [com.skyziyou.features.chat.ChatChannel] name; ANY =
  * all channels), [text] is shown as a large centred banner near the top of the
@@ -121,6 +140,15 @@ object SkyziyouConfig {
 
     /** User-defined chat match -> action rules; see [ChatRuleEntry]. */
     val chatRules: MutableList<ChatRuleEntry> = mutableListOf()
+
+    /** Chat Sounds master switch. */
+    var chatSoundsEnabled: Boolean = true
+
+    /** Print a local `[ChatSounds] ...` line whenever a sound rule fires. */
+    var chatSoundsLog: Boolean = true
+
+    /** User-defined chat match -> vanilla sound rules; see [SoundRuleEntry]. */
+    val chatSounds: MutableList<SoundRuleEntry> = mutableListOf()
 
     /** Screen Alerts master switch. */
     var screenAlertsEnabled: Boolean = true
@@ -243,6 +271,27 @@ object SkyziyouConfig {
                         ignoreCase = bool("ignoreCase", true),
                     )
                     chatRules.add(rule)
+                }
+            }
+            // chat sounds; malformed entries are skipped entirely
+            prim("chatSoundsEnabled")?.let { chatSoundsEnabled = it.asBoolean }
+            prim("chatSoundsLog")?.let { chatSoundsLog = it.asBoolean }
+            obj.getAsJsonArray("chatSounds")?.let { array ->
+                chatSounds.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    fun str(name: String) = entry.get(name)?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    chatSounds.add(
+                        SoundRuleEntry(
+                            enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true,
+                            pattern = str("pattern"),
+                            sound = str("sound").ifBlank { "entity.experience_orb.pickup" },
+                            channel = str("channel").ifBlank { "ANY" },
+                            regex = entry.get("regex")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
+                            ignoreCase = entry.get("ignoreCase")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true,
+                            repeat = entry.get("repeat")?.takeIf { it.isJsonPrimitive }?.asInt?.coerceIn(1, 5) ?: 1,
+                        ),
+                    )
                 }
             }
             // screen alerts; malformed entries are skipped entirely
@@ -382,6 +431,21 @@ object SkyziyouConfig {
                 chatRuleArray.add(entryObj)
             }
             obj.add("chatRules", chatRuleArray)
+            obj.addProperty("chatSoundsEnabled", chatSoundsEnabled)
+            obj.addProperty("chatSoundsLog", chatSoundsLog)
+            val chatSoundArray = com.google.gson.JsonArray()
+            chatSounds.forEach { soundRule ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("enabled", soundRule.enabled)
+                entryObj.addProperty("pattern", soundRule.pattern)
+                entryObj.addProperty("sound", soundRule.sound)
+                entryObj.addProperty("channel", soundRule.channel)
+                entryObj.addProperty("regex", soundRule.regex)
+                entryObj.addProperty("ignoreCase", soundRule.ignoreCase)
+                entryObj.addProperty("repeat", soundRule.repeat)
+                chatSoundArray.add(entryObj)
+            }
+            obj.add("chatSounds", chatSoundArray)
             obj.addProperty("screenAlertsEnabled", screenAlertsEnabled)
             val alertArray = com.google.gson.JsonArray()
             screenAlerts.forEach { alert ->

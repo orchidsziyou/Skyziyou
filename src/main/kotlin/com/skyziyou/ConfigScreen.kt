@@ -6,6 +6,7 @@ import com.skyziyou.features.command.CommandAliasesScreen
 import com.skyziyou.features.highlight.EntityHighlightsScreen
 import com.skyziyou.features.mineshaft.MineshaftCorpseScreen
 import com.skyziyou.features.party.AutoInviteConfigScreen
+import com.skyziyou.features.sound.ChatSoundsScreen
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
@@ -24,6 +25,7 @@ enum class ConfigCategory(
     WHEEL("cat.wheel", "cat.wheel.desc", { WheelConfigScreen() }),
     SHORTCUTS("cat.shortcuts", "cat.shortcuts.desc", { ShortcutsScreen() }),
     CHAT_RULES("cat.chatrules", "cat.chatrules.desc", { ChatRulesScreen() }),
+    CHAT_SOUNDS("cat.sounds", "cat.sounds.desc", { ChatSoundsScreen() }),
     ALIASES("aliases.title", "cat.aliases.desc", { CommandAliasesScreen() }),
     ALERTS("cat.alerts", "cat.alerts.desc", { ScreenAlertsScreen() }),
     CORPSES("corpses.title", "cat.corpses.desc", { MineshaftCorpseScreen() }),

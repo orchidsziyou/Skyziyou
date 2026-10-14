@@ -57,6 +57,9 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Channel prefixes are recognized by the server-sent section colour codes, so players cannot fake party/guild lines by typing them
   - Every rule has a 3s cooldown, all actions go through a global queue throttled to one message per second (cleared on disconnect), and rules can be restricted to Hypixel only
   - Brand-new installs start with two sample guild rules: `@[me] !i` -> `/p [player]` and `@[me] boop` -> `/boop [player]` (regex mode; freely editable/removable, seeded once only)
+- **Chat Sounds**: matches chat content exactly like Custom Chat Rules, but instead of running an action it **plays a built-in vanilla sound locally** (no packets, no messages) — configured in the "Chat Sounds" sub-page
+  - All sounds ship with the game (XP orb "ding", note blocks, cat meow, wolf bark, level-up, bell, ender dragon and more — 23 in total): no resource pack and no audio files. Left-click the sound button to cycle, **right-click to preview instantly**
+  - Each row: on/off → match text → sound → repeat count (×1–×5, ~0.25s apart) → channel (ANY/PC/GC/AC/PM/SYS) → Aa case → contains/regex; matching, the `[me]` placeholder and regex protection are identical to chat rules, with a 2s per-rule cooldown. The **Log** toggle at the top (on by default) prints a local line on every fire
 - **Mineshaft Corpse Report**: right after entering a Glacial Tunnels mineshaft, reads the "Frozen Corpses" section of the tab list and sends the corpse counts per type to party chat once — configured in the "Mineshaft Corpses" sub-page
   - Detailed (default): `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`; brief: `/pc Corpses (4): 2l 1u 1vg` (l/t/u/vg = Lapis/Tungsten/Umber/Vanguard; only types present in the shaft are listed)
   - Data comes straight from tab text — **no entity scanning and no view-distance dependence**; the message is sent within about a second of the shaft loading, exactly once per mineshaft, and rearms only after leaving
@@ -93,10 +96,11 @@ Client-side only; servers do not need to install anything.
 7. Command aliases: open the "Command Aliases" sub-page; each row is **command you type → what actually runs**, e.g. `/home` → `/warp base`. A target without a leading `/` is sent as chat
 8. Screen alerts: open the "Screen Alerts" sub-page; each row is **chat text to watch → banner shown on screen → watched channel**, shown for 4 seconds when matched. Use the `[player]`, `[me]` placeholders and § colour codes
 9. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → Aa case toggle → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
-10. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
-11. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
-12. Entity highlights: open the "Entity Highlights" sub-page; each row is **entity name -> outline colour**; matched mobs glow and show through walls. Living mobs only (armour stands excluded)
-13. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
+10. Chat sounds: open the "Chat Sounds" sub-page; each row is **match text → sound (left-click cycles, right-click previews) → ×n repeat count → channel → Aa → contains/regex**. A vanilla sound plays locally on a match — handy for rare-drop or keyword alerts (cat meow, ding, bell...)
+11. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
+12. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
+13. Entity highlights: open the "Entity Highlights" sub-page; each row is **entity name -> outline colour**; matched mobs glow and show through walls. Living mobs only (armour stands excluded)
+14. All settings are stored in `.minecraft/config/skyziyou.json`; edit it manually if needed, or delete the file to reset (a legacy `commandwheel.json` is migrated automatically on first launch)
 
 ## Configuration guide and examples
 
@@ -137,6 +141,33 @@ Examples:
 | ANY | contains | `[me] afk?` | `/pc back soon` | Anyone asks in any channel whether you are afk → reply once in party chat |
 
 Safety: your own messages and their echoes never trigger rules; every rule has a **3s cooldown**; all actions go through a global queue at **one message per second** (32 queued messages max, cleared on disconnect) so Hypixel never sees a burst; a malformed regex is reported once in chat and auto-disabled instead of crashing the game.
+
+### Chat Sounds
+
+Two switches at the top: **Enabled** (master switch) and **Log** (print a local `[ChatSounds] ...` line whenever a rule fires — on by default, handy for confirming a rule works). Firing a rule only plays a sound locally — **nothing is ever sent to the server**, so there is no Hypixel-only restriction; just flip the master switch off if you do not want the alerts in single-player.
+
+Each row, left to right:
+
+| Control | Meaning |
+|---|---|
+| ✓/✕ | Enable/disable this single rule |
+| Match (text box) | Chat text to match (supports the `[me]` placeholder) |
+| Sound button | **Left-click** cycles through 23 vanilla sounds; **right-click** previews with the current repeat count |
+| ×n button | Cycles **×1..×5**: how many times the sound plays in a row (~0.25s apart) |
+| Channel button (ANY/PC/GC/AC/PM/SYS) | Same as chat rules |
+| Aa | Green = ignore case, red = match case |
+| `.*`/Ab | Green `.*` = regex mode, grey Ab = plain contains mode |
+| X | Delete this row |
+
+Examples:
+
+| Channel | Mode | Match | Sound | What it does |
+|---|---|---|---|---|
+| SYS | contains | `RARE DROP!` | Cat Meow / Wolf Bark | An animal call alerts you on a rare drop |
+| PC | contains | `[me]` | XP Orb (ding) | A soft "ding" whenever someone mentions you in party |
+| ANY | regex | `\b(bingo|wither)\b` | Bell | Ring a bell on a keyword |
+
+Safety mirrors chat rules: your own messages never trigger; every rule has a **2s cooldown** so chat spam cannot machine-gun sounds; a malformed regex is reported once and auto-disabled. Playback follows the game master volume (MASTER source, 2D with no attenuation).
 
 ### Command Aliases
 
@@ -227,6 +258,9 @@ src/main/
 │       ├── chat/               # Unified chat channel classifier + custom chat rules
 │       │   ├── ChatChannel.kt / ChatClassifier.kt
 │       │   └── ChatRulesFeature.kt / ChatRulesScreen.kt
+│       ├── sound/              # Chat-triggered playback of built-in vanilla sounds (curated list)
+│       │   ├── SoundLibrary.kt / ChatSounds.kt
+│       │   └── ChatSoundsScreen.kt
 │       ├── command/            # Custom command aliases (typed-command rewrite)
 │       │   └── CommandAliases.kt / CommandAliasesScreen.kt
 │       ├── alert/              # Chat-keyword triggered centred screen banners
