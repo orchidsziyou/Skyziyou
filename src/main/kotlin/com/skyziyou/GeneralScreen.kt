@@ -1,5 +1,6 @@
 package com.skyziyou
 
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
 import net.minecraft.util.Util
@@ -16,19 +17,22 @@ class GeneralScreen : BaseConfigScreen("cat.general") {
         const val GITHUB_URL = "https://github.com/orchidsziyou/Skyziyou"
         const val RELEASES_URL = "$GITHUB_URL/releases"
 
-        private val VERSION_REGEX = Regex(""""version"\s*:\s*"([^"]+)"""")
-
         private var cachedVersion: String? = null
 
-        /** Installed mod version as declared in fabric.mod.json, or "?" if unavailable. */
+        /**
+         * Installed mod version reported by Fabric Loader for our mod id.
+         *
+         * Looking up "/fabric.mod.json" as a classpath resource is ambiguous in a
+         * Fabric instance: every installed mod ships that exact resource, so the
+         * Knot classloader may hand back another mod's file (Fabric API, Kotlin,
+         * SkyHanni...). Querying the container by id always returns our metadata.
+         */
         fun modVersion(): String = cachedVersion ?: readVersion().also { cachedVersion = it }
 
-        private fun readVersion(): String {
-            val json = GeneralScreen::class.java.getResourceAsStream("/fabric.mod.json")
-                ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                ?: return "?"
-            return VERSION_REGEX.find(json)?.groupValues?.get(1) ?: "?"
-        }
+        private fun readVersion(): String =
+            FabricLoader.getInstance().getModContainer("skyziyou")
+                .map { it.metadata.version.friendlyString }
+                .orElse("?")
     }
 
     private val cardW = 300

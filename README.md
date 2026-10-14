@@ -12,9 +12,13 @@
 
 ![游戏内轮盘](UI.png)
 
-**设置界面：**
+**设置界面 - 实体高亮：**
 
-![设置界面](setting.png)
+![实体高亮设置页](settingpage.png)
+
+**设置界面 - 自定义聊天规则：**
+
+![自定义聊天规则设置页](settingpage2.png)
 
 ## 功能特性
 
@@ -28,6 +32,7 @@
   - 轮盘打开期间**吞掉原版鼠标点击**，不会误攻击/误放方块
   - 右键随时取消关闭；超时（可配置）自动关闭
 - **内置分类设置界面**：游戏内输入 `/skyziyou` 或 `/sz` 打开，深色主题 + 左侧分类侧栏（风格参考 SkyHanni），开关为绿色 ✓ / 红色 ✕，各功能位于独立子页面，所有改动即时生效、Esc/完成时自动保存；侧栏底部可在 **English / 中文** 之间切换界面语言（仅设置界面，发出的聊天/指令内容不变）
+- **General（综述页）**：显示当前版本号（由 Fabric Loader 按 mod id 读取）、GitHub 链接（按钮一键用系统浏览器打开），以及手动"检查更新"——点按钮向 GitHub 查询最新 release 并在页面提示"已是最新 / 发现新版本"，**只查询、不自动下载安装**，确认有新版后自行打开 Releases 页面下载
 - **自定义快捷键**：任意按键（含鼠标键，如小键盘 2）可直接绑定一条指令或消息，按下立即执行，在 "Custom Shortcuts" 子页面配置；每条可单独启用/停用，按键冲突会标红提示
 - **Custom Command Aliases（自定义命令别名）**：把你在聊天框手输的命令改写成另一条命令或一条聊天消息，在 "Command Aliases" 子页面配置，每行两个框
   - 第一框：你输入的命令（带不带 `/` 均可，如 `/home`）；第二框：实际执行的内容（`/` 开头为命令，否则为聊天消息）
@@ -93,6 +98,86 @@
 12. 实体高亮：进入 "Entity Highlights" 子页面，每行填 **生物名字 → 轮廓颜色**，匹配到的生物会发光并隔墙可见；仅对生物生效（盔甲架除外）
 13. 所有设置保存在 `.minecraft/config/skyziyou.json`，可手动编辑，删除该文件即可重置（旧版 `commandwheel.json` 会在首次启动时自动迁移）
 
+## 配置指南与示例
+
+各子页面的行式列表通用操作：行首 ✓/✕ 控制该行启用/停用，行尾红色 X 删除该行，底部按钮添加新行，行数超出时可上下滚动；所有改动即时生效，Esc 或 Done 时自动保存。
+
+### Custom Chat Rules（自定义聊天规则）
+
+页面顶部三个总开关：**Enabled**（总开关）、**Log**（命中后在本地聊天栏显示一条 `[ChatRules] ...` 日志，方便调试）、**Hypixel Only**（仅在 Hypixel 服务器生效，建议保持开启）。
+
+每行从左到右的字段：
+
+| 控件 | 含义 |
+|---|---|
+| ✓/✕ | 该行规则的开关 |
+| Match（第一个框） | 要匹配的聊天内容 |
+| Action（第二个框） | 命中后执行的动作：`/` 开头为指令，否则发送聊天消息 |
+| 频道按钮（ANY/PC/GC/AC/PM/SYS） | 只在指定频道触发：ANY=任意、PC=队伍、GC=公会、AC=全局公共聊天、PM=私信、SYS=系统消息 |
+| Aa | 绿色=忽略大小写，红色=区分大小写 |
+| `.*`/Ab | 绿色 `.*`=正则模式，灰色 Ab=普通"包含文字"模式 |
+| X | 删除该行 |
+
+匹配的对象是**聊天正文**（已去掉 `Party > 玩家名:` 前缀和颜色码）。频道靠服务器下发的 § 颜色码识别，玩家自己在全局聊天里打出 "Party >" 文字无法冒充队伍消息。
+
+占位符（匹配框和动作框都可用）：
+
+- `[me]`：你自己的昵称（匹配框里用于"别人提到我"）
+- `[player]`：消息发送者昵称（SYS 系统消息没有发送者，会替换为空）
+- `$1`–`$9`：仅正则模式，替换为对应捕获组内容
+
+示例：
+
+| 频道 | 模式 | Match | Action | 效果 |
+|---|---|---|---|---|
+| PC | 包含 | `!warp` | `/p warp` | 队伍里有人发 `!warp`，自动执行 `/p warp` 拉人 |
+| GC | 正则 | `@[me] !i` | `/p [player]` | 公会里有人发 `@你的名字 !i`，自动邀请进队（首启自带） |
+| GC | 正则 | `@[me] boop` | `/boop [player]` | 有人在公会 @你 并说 boop，自动 boop 回去（首启自带） |
+| PM | 正则 | `^!pay (\d+)$` | `/pay [player] $1` | 别人私信 `!pay 1000` → 自动执行 `/pay 对方 1000`（自动付款类规则请谨慎添加） |
+| ANY | 包含 | `[me] afk?` | `/pc back soon` | 任意频道有人问你是不是挂机，自动在队伍频道回复 |
+
+安全机制：自己发出的消息和回声不会触发规则；每条规则 **3 秒冷却**；所有动作进入全局队列按 **1 秒一条**发送（队列上限 32 条，断线自动清空），避免被 Hypixel 限流；正则写错时只在聊天栏红字提示一次并自动停用该行，不会崩游戏。
+
+### Command Aliases（命令别名）
+
+每行：✓/✕ → 你输入的命令（带不带 `/` 均可）→ 实际执行的内容 → X。**只精确匹配整条命令**（忽略大小写），带额外参数时不触发，原命令照常发出。仅对以 `/` 开头的输入生效；想一键发送普通聊天文字请用 Custom Shortcuts。
+
+| 你输入 | 实际执行 | 说明 |
+|---|---|---|
+| `/pl` | `/p leave` | 一键退队（首启自带） |
+| `/dt` | `/warp dungeon_hub` | 快捷传送地下城大厅 |
+| `/hi` | `hello everyone` | 第二框不带 `/` 时作为聊天消息发出 |
+
+### Screen Alerts（屏幕提醒）
+
+每行：✓/✕ → 触发文字（忽略大小写的包含匹配）→ 横幅显示文字（留空则显示触发原文）→ 频道（ANY/PC/GC/AC/PM/SYS）→ X。横幅文字支持 § 颜色码和 `[player]`、`[me]` 占位符。
+
+| 频道 | 触发文字 | 横幅内容 | 效果 |
+|---|---|---|---|
+| PC | `warp` | `§a[player] §f发起了 warp` | 队伍有人说 warp 时绿色提示是谁发起的 |
+| SYS | `You found` | `§6§l掉落提示！` | 出现"You found …"掉落信息时金色大字提醒 |
+| PM | `!invite` | `§c[player] 请求邀请` | 收到邀请请求私信时红色提示 |
+
+横幅显示 4 秒；相同内容只刷新计时不重复堆叠，不同内容最多同时显示 5 条；页面顶部的 −/+ 调整字号（1.0–5.0 倍），下方有等比例实时预览。
+
+### Custom Shortcuts（自定义快捷键）
+
+每行：✓/✕ → 按键按钮（点击后按任意键/鼠标键）→ 要执行的指令或消息 → X。按下立即执行，适合任何常用操作，例如：小键盘 `2` → `/is`、`G` → `/p warp`、鼠标侧键 → `/hub`。两个快捷键绑到同一个键时页面上方会出现红色 ⚠ 冲突警告。
+
+### Entity Highlights（实体高亮）
+
+每行：✓/✕ → 生物名字（忽略大小写的包含匹配）→ 颜色按钮（点击循环 15 种原版颜色）→ X。同时匹配生物自带名字和头顶全息名字；多条规则同时命中同一生物时，**列表最上方的规则生效**。示例：
+
+| 名字 | 颜色 | 用途 |
+|---|---|---|
+| `Blacksmith` | 绿色 | Hub 铁匠 NPC |
+| `Lapis Zombie` | 红色 | 矿井里的青金僵尸 |
+| `Ice Walker` | 青色 | 矿井冰行者 |
+
+### Auto Party Invite（私信自动邀请）
+
+仅当收到的私信**正文恰好等于** `!invite`（忽略大小写）时自动执行 `/p <玩家>`；`!invite please` 之类的内容不会触发。同一玩家 60 秒内只触发一次，指令同样走 1 秒一条的全局队列。
+
 ## 从源码构建
 
 本仓库使用 [Stonecutter](https://github.com/kikugie-studio/stonecutter) 管理多版本，同一份源码可分别构建 26.1 与 26.2 的 jar。
@@ -124,11 +209,14 @@ cd Skyziyou
 src/main/
 ├── java/com/skyziyou/mixin/
 │   ├── MixinMouseHandler.java                  # Mixin：锁定视角、吞掉点击、采集鼠标位移
+│   ├── EntityAccessor.java                     # Mixin Invoker：setSharedFlag(6) 点亮实体发光
 │   └── ClientCommonPacketListenerAccessor.java # 读取服务器品牌（Hypixel 检测）
 ├── kotlin/com/skyziyou/
 │   ├── SkyziyouMod.kt          # 模组入口：初始化配置/渲染器/事件注册
 │   ├── ConfigScreen.kt         # 分类注册表 + BaseConfigScreen 侧栏外壳基类
 │   ├── SkyWidgets.kt           # 深色主题控件：SkyButton / SkyToggle（✓/✕）
+│   ├── GeneralScreen.kt        # General 综述页：版本号 / GitHub 链接 / 检查更新入口
+│   ├── UpdateChecker.kt        # 只读查询 GitHub 最新 release（后台线程，不自动下载）
 │   ├── WheelState.kt           # 轮盘核心状态机：打开/选中/关闭/执行
 │   ├── WheelRenderer.kt        # HUD 渲染：扫描线圆盘 + 文字标签
 │   ├── SkyziyouConfig.kt       # JSON 配置读写（原子写入、旧配置自动迁移）
@@ -145,9 +233,11 @@ src/main/
 │       │   └── ScreenAlerts.kt / ScreenAlertsScreen.kt
 │       ├── mineshaft/          # 进入矿井后读取 Tab 尸体信息并 /pc 播报
 │       │   └── MineshaftCorpseReporter.kt / MineshaftCorpseScreen.kt
-│       └── party/
-│           ├── AutoInviteFeature.kt        # 私信 !invite 自动邀请
-│           └── AutoInviteConfigScreen.kt   # 该功能的设置子页面
+│       ├── party/
+│       │   ├── AutoInviteFeature.kt        # 私信 !invite 自动邀请
+│       │   └── AutoInviteConfigScreen.kt   # 该功能的设置子页面
+│       └── highlight/                      # 实体发光高亮（名字+全息文字融合匹配、假队伍着色）
+│           └── EntityHighlights.kt / EntityHighlightsScreen.kt
 └── resources/
     └── skyziyou.mixins.json    # Mixin 配置（fabric.mod.json 按版本放在 versions/ 下）
 
