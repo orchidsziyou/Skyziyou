@@ -57,9 +57,11 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Channel prefixes are recognized by the server-sent section colour codes, so players cannot fake party/guild lines by typing them
   - Every rule has a 3s cooldown, all actions go through a global queue throttled to one message per second (cleared on disconnect), and rules can be restricted to Hypixel only
   - Brand-new installs start with two sample guild rules: `@[me] !i` -> `/p [player]` and `@[me] boop` -> `/boop [player]` (regex mode; freely editable/removable, seeded once only)
-- **Chat Sounds**: matches chat content exactly like Custom Chat Rules, but instead of running an action it **plays a built-in vanilla sound locally** (no packets, no messages) — configured in the "Chat Sounds" sub-page
-  - All sounds ship with the game (XP orb "ding", note blocks, cat meow, wolf bark, level-up, bell, ender dragon and more — 23 in total): no resource pack and no audio files. Left-click the sound button to cycle, **right-click to preview instantly**
-  - Each row: on/off → match text → sound → repeat count (×1–×5, ~0.25s apart) → channel (ANY/PC/GC/AC/PM/SYS) → Aa case → contains/regex; matching, the `[me]` placeholder and regex protection are identical to chat rules, with a 2s per-rule cooldown. The **Log** toggle at the top (on by default) prints a local line on every fire
+- **Chat Sounds**: matches chat content exactly like Custom Chat Rules, but instead of running an action it **plays a sound locally** (no packets, no messages) — configured in the "Chat Sounds" sub-page
+  - 23 curated built-in vanilla sounds (XP orb "ding", note blocks, cat meow, wolf bark, level-up, bell, ender dragon...): no resource pack needed
+  - **Custom sounds supported**: click "＋ Add custom sound…" in the sound picker, choose a local **.ogg (Ogg Vorbis) or .mp3** file (≤ 10 MB, ≤ 60 s), give it a name and it is ready to use — MP3 is decoded on import, the original file is kept in `config/skyziyou/sounds/`, no restart or resource reload needed; rename/delete included
+  - The per-row sound button opens a **scrollable sound picker** listing every built-in and custom sound with a ▶ preview per entry; a separate ▶ next to the button previews the row's sound with its repeat count
+  - Each row: on/off → match text → sound → ▶ → repeat count (×1–×5, ~0.25s apart) → channel (ANY/PC/GC/AC/PM/SYS) → Aa case → contains/regex; matching, the `[me]` placeholder and regex protection are identical to chat rules, with a 2s per-rule cooldown. The **Log** toggle at the top (on by default) prints a local line on every fire
 - **Mineshaft Corpse Report**: right after entering a Glacial Tunnels mineshaft, reads the "Frozen Corpses" section of the tab list and sends the corpse counts per type to party chat once — configured in the "Mineshaft Corpses" sub-page
   - Detailed (default): `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`; brief: `/pc Corpses (4): 2l 1u 1vg` (l/t/u/vg = Lapis/Tungsten/Umber/Vanguard; only types present in the shaft are listed)
   - Data comes straight from tab text — **no entity scanning and no view-distance dependence**; the message is sent within about a second of the shaft loading, exactly once per mineshaft, and rearms only after leaving
@@ -96,7 +98,7 @@ Client-side only; servers do not need to install anything.
 7. Command aliases: open the "Command Aliases" sub-page; each row is **command you type → what actually runs**, e.g. `/home` → `/warp base`. A target without a leading `/` is sent as chat
 8. Screen alerts: open the "Screen Alerts" sub-page; each row is **chat text to watch → banner shown on screen → watched channel**, shown for 4 seconds when matched. Use the `[player]`, `[me]` placeholders and § colour codes
 9. Automated chat rules: open the "Custom Chat Rules" sub-page; each row is **match text → action (`/` prefix = command) → channel → Aa case toggle → contains/regex mode**. Use the `[player]`, `[me]` and `$1`–`$9` placeholders
-10. Chat sounds: open the "Chat Sounds" sub-page; each row is **match text → sound (left-click cycles, right-click previews) → ×n repeat count → channel → Aa → contains/regex**. A vanilla sound plays locally on a match — handy for rare-drop or keyword alerts (cat meow, ding, bell...)
+10. Chat sounds: open the "Chat Sounds" sub-page; each row is **match text → sound picker → ▶ preview → ×n repeat count → channel → Aa → contains/regex**. Built-in or your own imported .ogg/.mp3 sound plays locally on a match — handy for rare-drop or keyword alerts (cat meow, ding, bell...)
 11. The mineshaft corpse report is enabled by default: entering a Glacial Tunnels mineshaft automatically sends the corpse counts via `/pc`; disable it or lift the Hypixel-only restriction in the "Mineshaft Corpses" sub-page
 12. The `!invite` PM auto-invite is enabled by default; disable it or lift the Hypixel-only restriction in the "Auto Party Invite" sub-page
 13. Entity highlights: open the "Entity Highlights" sub-page; each row is **entity name -> outline colour**; matched mobs glow and show through walls. Living mobs only (armour stands excluded)
@@ -152,12 +154,15 @@ Each row, left to right:
 |---|---|
 | ✓/✕ | Enable/disable this single rule |
 | Match (text box) | Chat text to match (supports the `[me]` placeholder) |
-| Sound button | **Left-click** cycles through 23 vanilla sounds; **right-click** previews with the current repeat count |
+| Sound button | Opens the **sound picker**: a scrollable list of all 23 built-in plus imported custom sounds; click an entry to select it, click its ▶ to preview |
+| ▶ | Previews this row's selected sound with the current repeat count |
 | ×n button | Cycles **×1..×5**: how many times the sound plays in a row (~0.25s apart) |
 | Channel button (ANY/PC/GC/AC/PM/SYS) | Same as chat rules |
 | Aa | Green = ignore case, red = match case |
 | `.*`/Ab | Green `.*` = regex mode, grey Ab = plain contains mode |
 | X | Delete this row |
+
+**Custom sounds**: click **＋ Add custom sound…** at the bottom of the picker to open the native file chooser, pick an **.ogg (Ogg Vorbis) or .mp3** file (≤ 10 MB, ≤ 60 s), name it in the in-game dialog and press Import. Importing runs in the background (no game freeze) and the sound appears instantly under the "CUSTOM SOUNDS" section; each custom entry has ✎ rename and X delete buttons. The original file is copied to `.minecraft/config/skyziyou/sounds/` (MP3 is stored as-is and played from decoded PCM internally — no re-encoding, no quality loss), game resources are never touched, and an F3+T resource reload does not affect it. Bad format / corrupt file / oversize produces a clear localised error in the dialog. If a custom sound is deleted, rules referencing it show "(deleted custom sound)" — just pick another sound.
 
 Examples:
 
@@ -283,3 +288,5 @@ settings.gradle.kts / stonecutter.gradle.kts       # Stonecutter multi-version b
 ## License
 
 [MIT](LICENSE)
+
+MP3 decoding for custom sounds uses [JLayer](http://www.javazoom.net/javalayer/javalayer.html) by JavaZOOM (LGPL-2.1), bundled **unmodified** via Jar-in-Jar (you may replace that library with your own copy); OGG decoding uses the JOrbis copy shipped with Minecraft.

@@ -19,7 +19,7 @@ plugins {
 }
 
 group = "com.skyziyou"
-version = "1.2.6"
+version = "1.3.0"
 
 base {
     archivesName.set("Skyziyou-Fabric+mc$node")
@@ -40,4 +40,10 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:0.19.3")
     implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
     implementation("net.fabricmc:fabric-language-kotlin:1.13.13+kotlin.2.4.10")
+
+    // MP3 decoding for user-imported custom chat sounds (pure Java, LGPL 2.1).
+    // "include" bundles it as Jar-in-Jar so end users need nothing extra; MC itself
+    // already ships JOrbis for Ogg Vorbis decoding.
+    implementation("javazoom:jlayer:1.0.1")
+    include("javazoom:jlayer:1.0.1")
 }

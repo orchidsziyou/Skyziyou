@@ -50,6 +50,7 @@ object ChatSounds {
     fun register() {
         ChatClassifier.handle(::onChat)
         ClientTickEvents.END_CLIENT_TICK.register { onTick() }
+        CustomSoundPlayer.warmUp() // decode imported sounds off-thread so first play never stalls
     }
 
     private fun onChat(chat: ClassifiedChat) {
@@ -103,11 +104,13 @@ object ChatSounds {
      */
     fun playRepeated(path: String, times: Int) {
         val count = times.coerceIn(1, MAX_REPEAT)
-        SoundLibrary.play(path)
+        SoundLibrary.playAny(path)
         if (count > 1) pending.add(PendingSound(path, count - 1, REPEAT_GAP_TICKS))
     }
 
     private fun onTick() {
+        // reap finished OpenAL sources from custom-sound playback
+        CustomSoundPlayer.tick()
         if (pending.isEmpty()) return
         val iterator = pending.iterator()
         while (iterator.hasNext()) {
@@ -116,7 +119,7 @@ object ChatSounds {
                 entry.delayTicks--
                 continue
             }
-            SoundLibrary.play(entry.path)
+            SoundLibrary.playAny(entry.path)
             entry.remaining--
             if (entry.remaining <= 0) iterator.remove() else entry.delayTicks = REPEAT_GAP_TICKS
         }

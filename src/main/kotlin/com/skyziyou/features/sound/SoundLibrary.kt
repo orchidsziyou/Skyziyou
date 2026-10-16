@@ -1,6 +1,7 @@
 package com.skyziyou.features.sound
 
 import com.skyziyou.I18n
+import com.skyziyou.SkyziyouConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.core.Holder
@@ -55,6 +56,11 @@ object SoundLibrary {
     /** path -> resolved holder, or null for an unknown/missing id; cached after first lookup. */
     private val cache = HashMap<String, Holder<SoundEvent>?>()
 
+    /** Pseudo-namespace marking a rule's sound as a user-imported custom sound id. */
+    const val CUSTOM_PREFIX = "custom:"
+
+    fun isCustom(path: String): Boolean = path.startsWith(CUSTOM_PREFIX)
+
     /** Default choice for a newly added rule. */
     val DEFAULT: Choice = CHOICES.first()
 
@@ -73,15 +79,29 @@ object SoundLibrary {
         mc.soundManager.play(SimpleSoundInstance.forUI(event, pitch, volume))
     }
 
-    /** Localised short label for the picker button; falls back to the raw id. */
+    /**
+     * Plays either a vanilla registry sound or a user-imported custom sound,
+     * depending on whether [path] carries the [CUSTOM_PREFIX].
+     */
+    fun playAny(path: String, volume: Float = 1.0f, pitch: Float = 1.0f) {
+        if (isCustom(path)) {
+            CustomSoundPlayer.play(path.removePrefix(CUSTOM_PREFIX))
+        } else {
+            play(path, volume, pitch)
+        }
+    }
+
+    /** Localised short label for the picker; custom sounds show their user-given name. */
     fun label(path: String): String {
+        if (isCustom(path)) {
+            val id = path.removePrefix(CUSTOM_PREFIX)
+            return SkyziyouConfig.customSounds.firstOrNull { it.id == id }?.name
+                ?: I18n.t("sounds.custom_missing")
+        }
         val key = CHOICES.firstOrNull { it.path == path }?.labelKey ?: return path
         return I18n.t(key)
     }
 
-    /** Next choice after [path] in picker order, wrapping around; unknown paths start at the top. */
-    fun next(path: String): Choice {
-        val index = CHOICES.indexOfFirst { it.path == path }
-        return CHOICES[(index + 1).coerceAtLeast(0) % CHOICES.size]
-    }
+    /** Reference string stored in a rule for one imported custom sound. */
+    fun customRef(id: String): String = CUSTOM_PREFIX + id
 }

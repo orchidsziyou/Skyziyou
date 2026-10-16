@@ -51,6 +51,20 @@ class SoundRuleEntry(
 )
 
 /**
+ * One user-imported custom sound. The audio itself lives at
+ * `.minecraft/config/skyziyou/sounds/<id>.<format>` (see
+ * com.skyziyou.features.sound.CustomSoundStore); a rule references it with the
+ * pseudo-identifier `"custom:<id>"` in [SoundRuleEntry.sound]. [name] is the
+ * user-chosen display label; [format] is "ogg" or "mp3".
+ */
+class CustomSoundEntry(
+    var id: String = "",
+    var name: String = "",
+    var file: String = "",
+    var format: String = "ogg",
+)
+
+/**
  * One screen alert: when [trigger] text is found in a received chat line of the
  * restricted [channel] (a [com.skyziyou.features.chat.ChatChannel] name; ANY =
  * all channels), [text] is shown as a large centred banner near the top of the
@@ -149,6 +163,9 @@ object SkyziyouConfig {
 
     /** User-defined chat match -> vanilla sound rules; see [SoundRuleEntry]. */
     val chatSounds: MutableList<SoundRuleEntry> = mutableListOf()
+
+    /** User-imported custom sound library referenced by chatSounds rules; see [CustomSoundEntry]. */
+    val customSounds: MutableList<CustomSoundEntry> = mutableListOf()
 
     /** Screen Alerts master switch. */
     var screenAlertsEnabled: Boolean = true
@@ -290,6 +307,26 @@ object SkyziyouConfig {
                             regex = entry.get("regex")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
                             ignoreCase = entry.get("ignoreCase")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true,
                             repeat = entry.get("repeat")?.takeIf { it.isJsonPrimitive }?.asInt?.coerceIn(1, 5) ?: 1,
+                        ),
+                    )
+                }
+            }
+            // imported custom sound library (files themselves live in config/skyziyou/sounds/)
+            obj.getAsJsonArray("customSounds")?.let { array ->
+                customSounds.clear()
+                for (element in array) {
+                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    fun str(name: String) = entry.get(name)?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                    val id = str("id")
+                    val file = str("file")
+                    // a library entry without its backing file is useless, skip it
+                    if (id.isBlank() || file.isBlank()) continue
+                    customSounds.add(
+                        CustomSoundEntry(
+                            id = id,
+                            name = str("name").ifBlank { "sound" },
+                            file = file,
+                            format = str("format").ifBlank { "ogg" }.take(4),
                         ),
                     )
                 }
@@ -446,6 +483,16 @@ object SkyziyouConfig {
                 chatSoundArray.add(entryObj)
             }
             obj.add("chatSounds", chatSoundArray)
+            val customSoundArray = com.google.gson.JsonArray()
+            customSounds.forEach { custom ->
+                val entryObj = com.google.gson.JsonObject()
+                entryObj.addProperty("id", custom.id)
+                entryObj.addProperty("name", custom.name)
+                entryObj.addProperty("file", custom.file)
+                entryObj.addProperty("format", custom.format)
+                customSoundArray.add(entryObj)
+            }
+            obj.add("customSounds", customSoundArray)
             obj.addProperty("screenAlertsEnabled", screenAlertsEnabled)
             val alertArray = com.google.gson.JsonArray()
             screenAlerts.forEach { alert ->
