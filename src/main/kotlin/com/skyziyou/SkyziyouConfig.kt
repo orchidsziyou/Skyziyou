@@ -164,6 +164,15 @@ object SkyziyouConfig {
     /** User-defined chat match -> vanilla sound rules; see [SoundRuleEntry]. */
     val chatSounds: MutableList<SoundRuleEntry> = mutableListOf()
 
+    /** Special fixed Chat Sounds rule: play [deathSound] when the vanilla death screen opens. */
+    var deathSoundEnabled: Boolean = false
+
+    /** Sound path (built-in id or custom: ref) played on death; a harsh default. */
+    var deathSound: String = "block.anvil.land"
+
+    /** How many times the death sound plays, 1..5. */
+    var deathSoundRepeat: Int = 1
+
     /** User-imported custom sound library referenced by chatSounds rules; see [CustomSoundEntry]. */
     val customSounds: MutableList<CustomSoundEntry> = mutableListOf()
 
@@ -293,6 +302,9 @@ object SkyziyouConfig {
             // chat sounds; malformed entries are skipped entirely
             prim("chatSoundsEnabled")?.let { chatSoundsEnabled = it.asBoolean }
             prim("chatSoundsLog")?.let { chatSoundsLog = it.asBoolean }
+            prim("deathSoundEnabled")?.let { deathSoundEnabled = it.asBoolean }
+            prim("deathSound")?.asString?.takeIf { it.isNotBlank() }?.let { deathSound = it }
+            prim("deathSoundRepeat")?.asInt?.coerceIn(1, 5)?.let { deathSoundRepeat = it }
             obj.getAsJsonArray("chatSounds")?.let { array ->
                 chatSounds.clear()
                 for (element in array) {
@@ -470,6 +482,9 @@ object SkyziyouConfig {
             obj.add("chatRules", chatRuleArray)
             obj.addProperty("chatSoundsEnabled", chatSoundsEnabled)
             obj.addProperty("chatSoundsLog", chatSoundsLog)
+            obj.addProperty("deathSoundEnabled", deathSoundEnabled)
+            obj.addProperty("deathSound", deathSound)
+            obj.addProperty("deathSoundRepeat", deathSoundRepeat)
             val chatSoundArray = com.google.gson.JsonArray()
             chatSounds.forEach { soundRule ->
                 val entryObj = com.google.gson.JsonObject()

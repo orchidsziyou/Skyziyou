@@ -26,13 +26,13 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs
  * instead of the old click-to-cycle button. The card also hosts the
  * "add custom sound" flow: native file dialog (.ogg/.mp3) -> in-game naming
  * card -> background copy+decode -> instantly selectable. Imported files land
- * in config/skyziyou/sounds and play through [CustomSoundPlayer] (OpenAL).
+ * in config/skyziyou/sounds and play through [CustomSoundPlayer] (Java Sound).
  */
 class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
 
     private var scroll = 0
 
-    // rule row being assigned a sound; -1 = picker closed
+    // rule row being assigned a sound; -1 = picker closed, DEATH_ROW = fixed death row
     private var pickerRule = -1
     private var pickerScroll = 0
 
@@ -48,6 +48,9 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
 
     private val rowH = 25
     private val startY = 58
+
+    /** Pseudo row index for the fixed "play on death" row (it never scrolls). */
+    private val deathRowPickerId = -2
 
     // rule row column geometry (total 348)
     private val colW = 348
@@ -93,7 +96,7 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
     override fun buildPage() {
         when {
             dialog != Dialog.NONE -> buildDialog()
-            pickerRule >= 0 -> buildPicker()
+            pickerRule != -1 -> buildPicker()
             else -> buildRules()
         }
     }
@@ -116,10 +119,34 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
             },
         )
 
+        // fixed special row (first list row): sound played when the death screen opens
+        addRenderableWidget(
+            checkButton(left, startY, SkyziyouConfig.deathSoundEnabled) {
+                SkyziyouConfig.deathSoundEnabled = it
+            },
+        )
+        addRenderableWidget(
+            SkyButton(left + pickX, startY, pickW, 20, soundPathLabel(SkyziyouConfig.deathSound)) {
+                openPicker(deathRowPickerId)
+            },
+        )
+        addRenderableWidget(
+            SkyButton(left + playX, startY, playW, 20, Component.literal("§a▶")) {
+                ChatSounds.playRepeated(SkyziyouConfig.deathSound, SkyziyouConfig.deathSoundRepeat)
+            },
+        )
+        addRenderableWidget(
+            SkyButton(left + repeatX, startY, repeatW, 20, Component.literal("§e×${SkyziyouConfig.deathSoundRepeat}")) {
+                SkyziyouConfig.deathSoundRepeat =
+                    if (SkyziyouConfig.deathSoundRepeat >= 5) 1 else SkyziyouConfig.deathSoundRepeat + 1
+                it.message = Component.literal("§e×${SkyziyouConfig.deathSoundRepeat}")
+            },
+        )
+
         for (row in 0 until visibleRows()) {
             val index = scroll + row
             if (index >= entries.size) break
-            val y = startY + row * rowH
+            val y = startY + rowH + row * rowH
             val rule = entries[index]
 
             addRenderableWidget(checkButton(left, y, rule.enabled) { rule.enabled = it })
@@ -226,11 +253,12 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
 
                     addRenderableWidget(
                         SkyButton(left + 8, y, labelEnd - (left + 8), 20, Component.literal(pickerLabel(item))) {
-                            val rule = SkyziyouConfig.chatSounds.getOrNull(pickerRule)
-                            if (rule != null) {
-                                rule.sound = item.path
-                                SkyziyouConfig.save()
+                            if (pickerRule == deathRowPickerId) {
+                                SkyziyouConfig.deathSound = item.path
+                            } else {
+                                SkyziyouConfig.chatSounds.getOrNull(pickerRule)?.sound = item.path
                             }
+                            SkyziyouConfig.save()
                             closePicker()
                         },
                     )
@@ -439,7 +467,7 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
                 else -> return super.keyPressed(event) // let the name box handle backspace/arrows/etc.
             }
         }
-        if (pickerRule >= 0 && event.key() == 256) {
+        if (pickerRule != -1 && event.key() == 256) {
             closePicker()
             return true
         }
@@ -457,7 +485,7 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
             if (!inside) return true
         }
         // click outside the open card closes the picker (but never the whole screen)
-        if (pickerRule >= 0 && dialog == Dialog.NONE) {
+        if (pickerRule != -1 && dialog == Dialog.NONE) {
             val mx = event.x().toInt()
             val my = event.y().toInt()
             val left = centerX(cardW)
@@ -476,7 +504,7 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
         horizontalAmount: Double,
         verticalAmount: Double,
     ): Boolean {
-        if (pickerRule >= 0 && dialog == Dialog.NONE) {
+        if (pickerRule != -1 && dialog == Dialog.NONE) {
             val max = (pickerItems().size - visibleSlots()).coerceAtLeast(0)
             pickerScroll = (pickerScroll - verticalAmount.toInt()).coerceIn(0, max)
             rebuildWidgets()
@@ -493,7 +521,7 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
     override fun drawBehind(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (dialog != Dialog.NONE) {
             drawCard(graphics, centerX(dlgW), height / 2 - dlgH / 2 - 10, dlgW, dlgH)
-        } else if (pickerRule >= 0) {
+        } else if (pickerRule != -1) {
             drawCard(graphics, centerX(cardW), cardTop, cardW, height - 26 - cardTop)
         }
     }
@@ -512,7 +540,7 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
         when {
             dialog != Dialog.NONE -> drawDialogText(graphics)
-            pickerRule >= 0 -> drawPickerText(graphics)
+            pickerRule != -1 -> drawPickerText(graphics)
             else -> drawRulesText(graphics)
         }
     }
@@ -523,6 +551,15 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
         graphics.text(font, I18n.t("sounds.header_sound"), left + pickX, startY - 10, SkyTheme.TEXT_DIM, false)
         graphics.text(font, I18n.t("sounds.header_repeat"), left + repeatX, startY - 10, -1, false)
         graphics.text(font, "§7ch", left + channelX, startY - 10, -1, false)
+        // label for the fixed death row (the row itself has no match text box)
+        graphics.text(
+            font,
+            "§c☠ §f" + clipText(I18n.t("sounds.death_row"), matchW - 12),
+            left + matchX,
+            startY + 6,
+            SkyTheme.TEXT,
+            false,
+        )
         graphics.text(font, I18n.t("sounds.legend"), left, height - 70, SkyTheme.TEXT_DIM, false)
     }
 
@@ -558,14 +595,16 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
 
     // ---------------------------------------------------------------- helpers
 
-    private fun visibleRows(): Int = ((height - startY - 80) / rowH).coerceAtLeast(1)
+    // one list slot is permanently occupied by the fixed death row
+    private fun visibleRows(): Int = ((height - startY - 78) / rowH - 1).coerceAtLeast(0)
 
     private fun maxScroll(): Int = (SkyziyouConfig.chatSounds.size - visibleRows()).coerceAtLeast(0)
 
-    private fun soundButtonLabel(rule: SoundRuleEntry): Component {
-        val plain = SoundLibrary.label(rule.sound)
-        val clipped = clipText(plain, pickW - 8)
-        val colour = if (SoundLibrary.isCustom(rule.sound)) "§d♪ " else "§b"
+    private fun soundButtonLabel(rule: SoundRuleEntry): Component = soundPathLabel(rule.sound)
+
+    private fun soundPathLabel(path: String): Component {
+        val clipped = clipText(SoundLibrary.label(path), pickW - 8)
+        val colour = if (SoundLibrary.isCustom(path)) "§d♪ " else "§b"
         return Component.literal(colour + clipped)
     }
 

@@ -11,7 +11,7 @@ import java.nio.ByteOrder
 
 /**
  * Turns user-imported audio files (Ogg Vorbis or MP3) into 16-bit interleaved
- * PCM for direct OpenAL playback. OGG is decoded with the JOrbis copy shipped
+ * PCM for Java Sound playback. OGG is decoded with the JOrbis copy shipped
  * inside Minecraft; MP3 with the bundled JLayer library.
  *
  * These run on a background worker thread during import (never the render
@@ -53,7 +53,7 @@ object AudioDecoders {
                 }
                 if (size == 0) throw SoundImportException("sounds.err_decode")
 
-                // OpenAL gets mono or interleaved stereo only; reject surround (>2 ch)
+                // playback accepts mono or interleaved stereo only; reject surround (>2 ch)
                 // streams rather than coercing the channel count and playing garbage.
                 if (format.channels !in 1..2) throw SoundImportException("sounds.err_decode")
                 val channels = format.channels

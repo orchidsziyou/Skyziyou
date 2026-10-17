@@ -1,7 +1,7 @@
 package com.skyziyou.features.sound
 
 /**
- * Decoded user sound ready for OpenAL upload: signed 16-bit interleaved PCM.
+ * Decoded user sound ready for playback: signed 16-bit interleaved PCM.
  * For mono [samples] is one channel; for stereo samples alternate L/R.
  */
 class PcmSound(

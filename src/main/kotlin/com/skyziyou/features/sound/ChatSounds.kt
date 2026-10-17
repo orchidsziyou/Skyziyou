@@ -5,7 +5,9 @@ import com.skyziyou.features.chat.ChatChannel
 import com.skyziyou.features.chat.ChatClassifier
 import com.skyziyou.features.chat.ClassifiedChat
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.DeathScreen
 import net.minecraft.network.chat.Component
 
 /**
@@ -26,6 +28,19 @@ object ChatSounds {
     private const val RULE_COOLDOWN_MS = 2_000L
     private const val MAX_REGEX_INPUT = 256
 
+    /**
+     * Window in which the death screen signal and the SkyBlock ☠ chat signal count
+     * as one death, so a normal server that produces both only plays the sound once.
+     */
+    private const val DEATH_DEDUP_MS = 3_000L
+
+    /**
+     * SkyBlock death notices ("☠ You died to a Ghost.",
+     * "☠ You were killed by …", dungeon ghost deaths included). Only matched on
+     * SYSTEM lines: a player typing the same text in chat keeps their author name.
+     */
+    private val skyblockDeathRegex = Regex("""☠\s*You (?:died|were killed)\b""")
+
     /** Ticks between the repeated plays of one rule (~0.25s). */
     private const val REPEAT_GAP_TICKS = 5
     private const val MAX_REPEAT = 5
@@ -36,6 +51,9 @@ object ChatSounds {
 
     /** Rule index -> last play time. */
     private val lastFiredAt = HashMap<Int, Long>()
+
+    /** Last time the death sound actually played; backs the two-signal dedup. */
+    private var lastDeathFiredAt = 0L
 
     /** Regex cache: pattern text + case flag -> compiled regex, or null when invalid. */
     private val regexCache = HashMap<String, Regex?>()
@@ -51,6 +69,38 @@ object ChatSounds {
         ChatClassifier.handle(::onChat)
         ClientTickEvents.END_CLIENT_TICK.register { onTick() }
         CustomSoundPlayer.warmUp() // decode imported sounds off-thread so first play never stalls
+        // AFTER_INIT also re-fires when the screen is re-initialised on window
+        // resize / F11, so gate on an edge and reset it when that exact screen
+        // instance goes away (respawn / title).
+        ScreenEvents.AFTER_INIT.register { _, screen, _, _ ->
+            if (screen is DeathScreen && !deathScreenOpen) {
+                deathScreenOpen = true
+                ScreenEvents.remove(screen).register { deathScreenOpen = false }
+                onDeath(null)
+            }
+        }
+    }
+
+    private var deathScreenOpen = false
+
+    /** Fires the fixed death rule; shares the master switch and log toggle. */
+    private fun onDeath(matchedText: String?) {
+        if (!SkyziyouConfig.chatSoundsEnabled || !SkyziyouConfig.deathSoundEnabled) return
+        val now = System.currentTimeMillis()
+        if (now - lastDeathFiredAt < DEATH_DEDUP_MS) return
+        lastDeathFiredAt = now
+        playRepeated(SkyziyouConfig.deathSound, SkyziyouConfig.deathSoundRepeat)
+        if (SkyziyouConfig.chatSoundsLog) {
+            // show exactly which line matched (clipped), so SkyBlock wording variants are easy to spot
+            val clipped = matchedText?.trim()?.take(80)
+            val source = if (clipped.isNullOrEmpty()) "§7vanilla death screen" else "§7chat §8→ §f$clipped"
+            mc.player?.sendSystemMessage(
+                Component.literal(
+                    "§7[ChatSounds] §cdeath§7 ($source§7) §7-> §f${SoundLibrary.label(SkyziyouConfig.deathSound)} " +
+                        "×${SkyziyouConfig.deathSoundRepeat.coerceIn(1, MAX_REPEAT)}",
+                ),
+            )
+        }
     }
 
     private fun onChat(chat: ClassifiedChat) {
@@ -59,6 +109,14 @@ object ChatSounds {
         val self = ChatClassifier.selfName()
         // never react to our own echoed party/guild/all lines or outgoing whispers
         if (chat.playerName?.equals(self, ignoreCase = true) == true) return
+
+        // SkyBlock never opens the vanilla death screen (the server handles death
+        // before the client health hits zero; dungeon deaths become ghosts), so its
+        // ☠ system notice is the only death signal there.
+        if (chat.playerName == null && skyblockDeathRegex.containsMatchIn(chat.message)) {
+            onDeath(chat.message)
+            return
+        }
 
         SkyziyouConfig.chatSounds.forEachIndexed { index, rule ->
             if (!rule.enabled || rule.pattern.isBlank()) return@forEachIndexed
@@ -109,8 +167,7 @@ object ChatSounds {
     }
 
     private fun onTick() {
-        // reap finished OpenAL sources from custom-sound playback
-        CustomSoundPlayer.tick()
+        // custom sounds play on their own Java Sound worker threads; no OpenAL reaping needed here
         if (pending.isEmpty()) return
         val iterator = pending.iterator()
         while (iterator.hasNext()) {
