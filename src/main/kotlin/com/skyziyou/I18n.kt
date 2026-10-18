@@ -98,7 +98,8 @@ object I18n {
         "chatrules.action_hint" to "/command or reply",
         "chatrules.header_match" to "§7match ([me] = you)",
         "chatrules.header_action" to "§7action  (use [player], $1..$9)",
-        "chatrules.legend" to "§7Ch: ANY/PC/GC/AC/PM/SYS · Aa: green=ignore case, red=exact · Ab=contains  .*=regex",
+        "chatrules.header_delay" to "§7delay",
+        "chatrules.legend" to "§7Ch: ANY/PC/GC/AC/PM/SYS · s: click to set 0-10s send delay · Aa: green=ignore case, red=exact · Ab=contains  .*=regex",
         "chatrules.add" to "Add Rule",
 
         // chat sounds page
@@ -269,7 +270,8 @@ object I18n {
         "chatrules.action_hint" to "/指令或回复",
         "chatrules.header_match" to "§7匹配（[me] = 自己）",
         "chatrules.header_action" to "§7动作（可用 [player]、$1..$9）",
-        "chatrules.legend" to "§7频道：ANY/PC/GC/AC/PM/SYS · Aa：绿=忽略大小写，红=精确 · Ab=包含  .*=正则",
+        "chatrules.header_delay" to "§7延时",
+        "chatrules.legend" to "§7频道：ANY/PC/GC/AC/PM/SYS · s：点击设置0-10秒发送延时 · Aa：绿=忽略大小写，红=精确 · Ab=包含  .*=正则",
         "chatrules.add" to "添加规则",
 
         // chat sounds page

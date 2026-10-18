@@ -13,8 +13,8 @@ import net.minecraft.network.chat.Component
 /**
  * "Custom Chat Rules" editor sub-page. Each row has three main boxes:
  *   match pattern | action (/command or chat text) | channel restriction,
- * plus an on/off switch, an ignore-case (Aa) toggle, a contains/regex mode
- * toggle and a delete button.
+ * plus an on/off switch, a 0-10s send-delay cycler, an ignore-case (Aa)
+ * toggle, a contains/regex mode toggle and a delete button.
  * Action text supports [player] (and $1..$9 in regex mode).
  */
 class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
@@ -58,14 +58,14 @@ class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
                 checkButton(left, y, rule.enabled) { rule.enabled = it },
             )
 
-            val matchBox = EditBox(font, left + 26, y, 95, 20, Component.empty())
+            val matchBox = EditBox(font, left + 26, y, 88, 20, Component.empty())
             matchBox.setMaxLength(128)
             matchBox.value = rule.pattern
             matchBox.setHint(Component.literal(I18n.t("chatrules.match_hint")))
             matchBox.setResponder { rule.pattern = it }
             addRenderableWidget(matchBox)
 
-            val actionBox = EditBox(font, left + 125, y, 95, 20, Component.empty())
+            val actionBox = EditBox(font, left + 118, y, 88, 20, Component.empty())
             actionBox.setMaxLength(128)
             actionBox.value = rule.action
             actionBox.setHint(Component.literal(I18n.t("chatrules.action_hint")))
@@ -73,21 +73,29 @@ class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
             addRenderableWidget(actionBox)
 
             addRenderableWidget(
-                SkyButton(left + 224, y, 36, 20, Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)) {
+                SkyButton(left + 210, y, 28, 20, delayLabel(rule)) {
+                    rule.delaySeconds =
+                        if (rule.delaySeconds >= ChatRulesFeature.MAX_DELAY_SECONDS) 0 else rule.delaySeconds + 1
+                    it.message = delayLabel(rule)
+                },
+            )
+
+            addRenderableWidget(
+                SkyButton(left + 242, y, 30, 20, Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)) {
                     rule.channel = nextChannel(rule.channel).name
                     it.message = Component.literal(ChatChannel.fromNameOrAny(rule.channel).label)
                 },
             )
 
             addRenderableWidget(
-                SkyButton(left + 264, y, 24, 20, caseLabel(rule)) {
+                SkyButton(left + 276, y, 20, 20, caseLabel(rule)) {
                     rule.ignoreCase = !rule.ignoreCase
                     it.message = caseLabel(rule)
                 },
             )
 
             addRenderableWidget(
-                SkyButton(left + 292, y, 30, 20, regexLabel(rule)) {
+                SkyButton(left + 300, y, 24, 20, regexLabel(rule)) {
                     rule.regex = !rule.regex
                     it.message = regexLabel(rule)
                 },
@@ -95,7 +103,7 @@ class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
 
             addRenderableWidget(
                 SkyButton(
-                    left + 324, y, 20, 20, Component.literal("X"),
+                    left + 328, y, 20, 20, Component.literal("X"),
                     style = SkyButton.Style.DANGER,
                 ) {
                     entries.removeAt(index)
@@ -117,9 +125,10 @@ class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
         val left = centerX(348)
         graphics.text(font, I18n.t("chatrules.header_match"), left + 26, startY - 10, SkyTheme.TEXT_DIM, false)
-        graphics.text(font, I18n.t("chatrules.header_action"), left + 125, startY - 10, SkyTheme.TEXT_DIM, false)
-        graphics.text(font, "§7ch", left + 224, startY - 10, -1, false)
-        graphics.text(font, "§7Aa", left + 266, startY - 10, -1, false)
+        graphics.text(font, I18n.t("chatrules.header_action"), left + 118, startY - 10, SkyTheme.TEXT_DIM, false)
+        graphics.text(font, I18n.t("chatrules.header_delay"), left + 210, startY - 10, SkyTheme.TEXT_DIM, false)
+        graphics.text(font, "§7ch", left + 242, startY - 10, -1, false)
+        graphics.text(font, "§7Aa", left + 278, startY - 10, -1, false)
         graphics.text(
             font,
             I18n.t("chatrules.legend"),
@@ -147,6 +156,9 @@ class ChatRulesScreen : BaseConfigScreen("cat.chatrules") {
 
     private fun regexLabel(rule: ChatRuleEntry): Component =
         Component.literal(if (rule.regex) "§b.*" else "§7Ab")
+
+    private fun delayLabel(rule: ChatRuleEntry): Component =
+        Component.literal(if (rule.delaySeconds == 0) "§70s" else "§e${rule.delaySeconds}s")
 
     private fun caseLabel(rule: ChatRuleEntry): Component =
         Component.literal(if (rule.ignoreCase) "§aAa" else "§cAa")

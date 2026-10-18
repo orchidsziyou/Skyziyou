@@ -20,7 +20,8 @@ class ShortcutEntry(
  * [channel] (a [com.skyziyou.features.chat.ChatChannel] name), [action] is sent
  * (leading slash = command, otherwise chat). [regex] switches [pattern] from
  * contains matching to full regex matching. [ignoreCase] controls whether either
- * kind of match is case-insensitive (default true).
+ * kind of match is case-insensitive (default true). [delaySeconds] postpones the
+ * action by 0..10 seconds after a match (0 = immediate).
  */
 class ChatRuleEntry(
     var enabled: Boolean = true,
@@ -29,6 +30,8 @@ class ChatRuleEntry(
     var channel: String = "ANY",
     var regex: Boolean = false,
     var ignoreCase: Boolean = true,
+    /** Delay between match and sending the action, 0..10 seconds; 0 sends immediately. */
+    var delaySeconds: Int = 0,
 )
 
 /**
@@ -295,6 +298,7 @@ object SkyziyouConfig {
                         channel = str("channel").ifBlank { "ANY" },
                         regex = bool("regex", false),
                         ignoreCase = bool("ignoreCase", true),
+                        delaySeconds = entry.get("delaySeconds")?.takeIf { it.isJsonPrimitive }?.asInt?.coerceIn(0, 10) ?: 0,
                     )
                     chatRules.add(rule)
                 }
@@ -477,6 +481,7 @@ object SkyziyouConfig {
                 entryObj.addProperty("channel", rule.channel)
                 entryObj.addProperty("regex", rule.regex)
                 entryObj.addProperty("ignoreCase", rule.ignoreCase)
+                entryObj.addProperty("delaySeconds", rule.delaySeconds)
                 chatRuleArray.add(entryObj)
             }
             obj.add("chatRules", chatRuleArray)

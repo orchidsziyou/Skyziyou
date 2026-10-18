@@ -120,6 +120,7 @@ Each row, left to right:
 | ✓/✕ | Enable/disable this single rule |
 | Match (first box) | Chat text to match |
 | Action (second box) | What runs on a match: a leading `/` runs it as a command, otherwise it is sent as chat |
+| Delay button (0s–10s) | Click to cycle 0→1→…→10 seconds; on a match the action waits that many seconds before running (0s = immediate). A pending action is auto-cancelled if the rule/master switch is turned off, the row is deleted, you disconnect, or you leave Hypixel during the countdown |
 | Channel button (ANY/PC/GC/AC/PM/SYS) | Fire only on the chosen channel: ANY=all channels, PC=party, GC=guild, AC=all/public chat, PM=private message, SYS=system message |
 | Aa | Green = ignore case, red = match case |
 | `.*`/Ab | Green `.*` = regex mode, grey Ab = plain "contains text" mode |

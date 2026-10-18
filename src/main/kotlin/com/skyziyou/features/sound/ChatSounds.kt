@@ -4,6 +4,7 @@ import com.skyziyou.SkyziyouConfig
 import com.skyziyou.features.chat.ChatChannel
 import com.skyziyou.features.chat.ChatClassifier
 import com.skyziyou.features.chat.ClassifiedChat
+import com.skyziyou.features.chat.RegexSafety
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.minecraft.client.Minecraft
@@ -182,16 +183,18 @@ object ChatSounds {
         }
     }
 
-    /** Compiles and caches a regex; reports an invalid pattern locally exactly once. */
+    /** Compiles, ReDoS-validates and caches a regex; reports a bad pattern locally exactly once. */
     private fun compile(pattern: String, ignoreCase: Boolean): Regex? {
         val key = "$ignoreCase\n$pattern"
         if (regexCache.containsKey(key)) return regexCache[key]
         val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
-        val regex = runCatching { Regex(pattern, options) }.getOrNull()
+        val compiled = runCatching { Regex(pattern, options) }.getOrNull()
+        val regex = compiled?.takeIf { runCatching { RegexSafety.isSafe(it) }.getOrDefault(false) }
         regexCache[key] = regex
         if (regex == null && warnedBadPatterns.add(key)) {
+            val reason = if (compiled != null) "Slow/unsafe regex (catastrophic backtracking)" else "Invalid regex"
             mc.player?.sendSystemMessage(
-                Component.literal("§c[ChatSounds] Invalid regex, sound rule disabled: §7$pattern"),
+                Component.literal("§c[ChatSounds] $reason, sound rule disabled: §7$pattern"),
             )
         }
         return regex

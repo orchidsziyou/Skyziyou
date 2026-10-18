@@ -1,7 +1,9 @@
 package com.skyziyou.features.chat
 
+import com.skyziyou.ChatRuleEntry
 import com.skyziyou.SkyziyouConfig
 import com.skyziyou.features.ActionQueue
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 
@@ -10,9 +12,12 @@ import net.minecraft.network.chat.Component
  *
  * Each rule has a match pattern (contains or regex, each optionally case-sensitive),
  * an action (leading slash = command, otherwise chat text) and a channel restriction
- * (ANY / PARTY / GUILD / ALL / PRIVATE / SYSTEM). Actions support the `[player]`
- * placeholder (replaced with the sender's clean username) and, in regex mode,
- * `$1`..`$9` capture-group substitutions.
+ * (ANY / PARTY / GUILD / ALL / PRIVATE / SYSTEM). Each rule may delay its action by
+ * 0-10 seconds; delayed actions are cancelled when the rule is deleted/turned off,
+ * the master switch is toggled off, the player disconnects, or (with the Hypixel-only
+ * restriction) leaves Hypixel. Actions support the `[player]` placeholder (replaced
+ * with the sender's clean username) and, in regex mode, `$1`..`$9` capture-group
+ * substitutions.
  *
  * Safety: self-authored/echoed lines never trigger rules; every rule has a
  * cooldown; invalid regexes are reported once and disabled; all sends go through
@@ -22,11 +27,18 @@ object ChatRulesFeature {
 
     private const val RULE_COOLDOWN_MS = 3_000L
 
+    /** Upper bound on delayed actions waiting to fire (never approached under the 3 s rule cooldown). */
+    private const val MAX_PENDING = 32
+
+    /** Per-rule configurable delay ceiling, in seconds. */
+    const val MAX_DELAY_SECONDS = 10
+
     /**
      * Max chat-line length fed to a USER-supplied regex. A pathological pattern
-     * (catastrophic backtracking such as "(a+)+") could otherwise stall the client
-     * thread; Hypixel chat lines are never longer than this anyway, so matching is
-     * unaffected while the worst-case cost is bounded.
+     * (catastrophic backtracking such as "(a+)+") is exponential even on short
+     * inputs, so this is only a secondary bound — [RegexSafety] rejects such
+     * patterns before they are ever used. Hypixel chat lines are never longer
+     * than this anyway, so matching is unaffected.
      */
     private const val MAX_REGEX_INPUT = 256
 
@@ -44,8 +56,50 @@ object ChatRulesFeature {
     /** Invalid patterns already reported locally, so the warning shows only once. */
     private val warnedBadPatterns = HashSet<String>()
 
+    /**
+     * Actions waiting out their per-rule delay. Holds the final, placeholder-expanded
+     * text and the originating [ChatRuleEntry] object (identity, not index), so a
+     * rule deleted or disabled while pending is detected directly.
+     */
+    private data class PendingAction(val rule: ChatRuleEntry, val command: String?, val chat: String?, val dueAt: Long)
+    private val pending = ArrayList<PendingAction>()
+
     fun register() {
         ChatClassifier.handle(::onChat)
+        ClientTickEvents.END_CLIENT_TICK.register { onTick() }
+    }
+
+    /**
+     * Flushes due delayed actions. The whole backlog is dropped on disconnect,
+     * while the master switch is off, or when no longer on Hypixel (with the
+     * Hypixel-only restriction) — a delayed command must never fire after the
+     * player has left the context it matched in. Individual entries are also
+     * cancelled when their rule is deleted or switched off.
+     */
+    private fun onTick() {
+        if (pending.isEmpty()) return
+        if (mc.player == null ||
+            !SkyziyouConfig.chatRulesEnabled ||
+            (SkyziyouConfig.chatRulesHypixelOnly && !ChatClassifier.isOnHypixel())
+        ) {
+            pending.clear()
+            return
+        }
+        val rules = SkyziyouConfig.chatRules
+        val now = System.currentTimeMillis()
+        val iterator = pending.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.rule !in rules || !entry.rule.enabled) {
+                iterator.remove()
+                continue
+            }
+            if (now >= entry.dueAt) {
+                if (entry.command != null) ActionQueue.enqueueCommand(entry.command)
+                else if (entry.chat != null) ActionQueue.enqueueChat(entry.chat)
+                iterator.remove()
+            }
+        }
     }
 
     private fun onChat(chat: ClassifiedChat) {
@@ -91,31 +145,48 @@ object ChatRulesFeature {
                 }
             }
 
-            if (action.startsWith("/")) {
-                ActionQueue.enqueueCommand(action.substring(1))
+            val accepted = if (action.startsWith("/")) {
+                schedule(rule, action.substring(1), null)
             } else {
-                ActionQueue.enqueueChat(action)
+                schedule(rule, null, action)
             }
 
             if (SkyziyouConfig.chatRulesLog) {
                 val who = chat.playerName?.let { " §7from §e$it" } ?: ""
+                val delay = rule.delaySeconds.coerceIn(0, MAX_DELAY_SECONDS)
+                val whenSent = if (delay > 0) " §7in §e${delay}s" else ""
+                val note = if (accepted) "" else " §c(pending queue full, skipped)"
                 mc.player?.sendSystemMessage(
-                    Component.literal("§7[ChatRules] §a${channel.label}§7/$index$who §7-> §f$action"),
+                    Component.literal("§7[ChatRules] §a${channel.label}§7/$index$who$whenSent §7-> §f$action$note"),
                 )
             }
         }
     }
 
-    /** Compiles and caches a regex; reports an invalid pattern locally exactly once. */
+    /** Sends now for a zero delay, otherwise parks the final action until its due tick. */
+    private fun schedule(rule: ChatRuleEntry, command: String?, chat: String?): Boolean {
+        val delaySeconds = rule.delaySeconds.coerceIn(0, MAX_DELAY_SECONDS)
+        if (delaySeconds <= 0) {
+            if (command != null) ActionQueue.enqueueCommand(command) else ActionQueue.enqueueChat(chat ?: "")
+            return true
+        }
+        if (pending.size >= MAX_PENDING) return false
+        pending.add(PendingAction(rule, command, chat, System.currentTimeMillis() + delaySeconds * 1000L))
+        return true
+    }
+
+    /** Compiles, ReDoS-validates and caches a regex; reports a bad pattern locally exactly once. */
     private fun compile(pattern: String, ignoreCase: Boolean): Regex? {
         val key = "$ignoreCase\n$pattern"
         if (regexCache.containsKey(key)) return regexCache[key]
         val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
-        val regex = runCatching { Regex(pattern, options) }.getOrNull()
+        val compiled = runCatching { Regex(pattern, options) }.getOrNull()
+        val regex = compiled?.takeIf { runCatching { RegexSafety.isSafe(it) }.getOrDefault(false) }
         regexCache[key] = regex
         if (regex == null && warnedBadPatterns.add(key)) {
+            val reason = if (compiled != null) "Slow/unsafe regex (catastrophic backtracking)" else "Invalid regex"
             mc.player?.sendSystemMessage(
-                Component.literal("§c[ChatRules] Invalid regex, rule disabled: §7$pattern"),
+                Component.literal("§c[ChatRules] $reason, rule disabled: §7$pattern"),
             )
         }
         return regex
