@@ -77,6 +77,16 @@ object ScreenAlerts {
         }
     }
 
+    /**
+     * Shows a banner for another feature (e.g. a delayed chat rule). Honours the
+     * Screen Alerts master switch so turning the feature off silences every
+     * banner source, and reuses the same de-duplication/stacking rules.
+     */
+    fun notifyExternal(text: String) {
+        if (!SkyziyouConfig.screenAlertsEnabled) return
+        show(text)
+    }
+
     private fun show(text: String) {
         val now = System.currentTimeMillis()
         active.firstOrNull { it.text == text }?.let {

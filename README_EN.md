@@ -33,6 +33,7 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Right click cancels anytime; the wheel auto-closes after a configurable timeout
 - **Built-in category settings menu**: type `/skyziyou` or `/sz` in game; a dark SkyHanni-style layout with a left category sidebar and green ✓ / red ✕ toggles, every feature has its own sub-page, changes apply instantly and are saved on Esc/Done; the button at the bottom of the sidebar switches the interface language between **English / 中文** (settings UI only, sent chat/commands are unchanged)
 - **General tab**: shows the running mod version (read from Fabric Loader by mod id, so it can never pick up another mod's metadata), GitHub links (a button opens them in the system browser), and a **manual update check** — one button queries GitHub's latest release and reports "up to date / new version available" on the page. It is strictly read-only: nothing is downloaded or installed automatically; when an update exists you open the Releases page and install it yourself
+- **Profiles**: switch the **8 wheel slots** and the **custom shortcuts** per situation — click a profile name in the "Profiles" sub-page to activate it, duplicate the current one, create a blank one, rename or delete (at least one always remains). **Every other setting (trigger key, dead zone, aliases, chat rules, sounds, alerts, highlights, ...) is global and shared by all profiles.** Switching closes an open wheel and requires shortcuts to be pressed again, so the old profile's entries can never fire.
 - **Custom key shortcuts**: bind any key (including mouse buttons, e.g. numpad 2) directly to a command or chat message and run it with a single press — configured in the "Custom Shortcuts" sub-page; each shortcut can be toggled on/off individually, and key conflicts are flagged in red
 - **Custom Command Aliases**: rewrite a command you type into another command or a chat message — configured in the "Command Aliases" sub-page, two boxes per row
   - First box: the command you type (with or without the leading `/`, e.g. `/home`); second box: what actually runs (`/` prefix = command, otherwise chat)
@@ -120,7 +121,7 @@ Each row, left to right:
 | ✓/✕ | Enable/disable this single rule |
 | Match (first box) | Chat text to match |
 | Action (second box) | What runs on a match: a leading `/` runs it as a command, otherwise it is sent as chat |
-| Delay button (0s–10s) | Click to cycle 0→1→…→10 seconds; on a match the action waits that many seconds before running (0s = immediate). A pending action is auto-cancelled if the rule/master switch is turned off, the row is deleted, you disconnect, or you leave Hypixel during the countdown |
+| Delay button (0s–10s) | Click to cycle 0→1→…→10 seconds; on a match the action waits that many seconds before running (0s = immediate). While pending, a one-shot on-screen banner shows "running XXX in N s" (controlled by the Screen Alerts master switch, fades after 4 s). A pending action is auto-cancelled if the rule/master switch is turned off, the row is deleted, you disconnect, or you leave Hypixel during the countdown |
 | Channel button (ANY/PC/GC/AC/PM/SYS) | Fire only on the chosen channel: ANY=all channels, PC=party, GC=guild, AC=all/public chat, PM=private message, SYS=system message |
 | Aa | Green = ignore case, red = match case |
 | `.*`/Ab | Green `.*` = regex mode, grey Ab = plain "contains text" mode |
@@ -197,6 +198,20 @@ Each row: ✓/✕ → trigger text (case-insensitive contains) → banner text (
 | PM | `!invite` | `§c[player] requests an invite` | Red notice for incoming invite-request whispers |
 
 Banners stay for 4 seconds; repeated identical text refreshes the timer instead of stacking, and different banners stack up to 5; the −/+ buttons at the top set the font scale (1.0–5.0x) with a live, true-size preview below the list.
+
+### Profiles
+
+A profile bundles exactly two things: the **8 wheel slots** and the **custom shortcuts**. For example a "Dungeons" profile with `/warp dungeon_hub` and `/p warp`, and a "Mining" profile with mineshaft commands; switching back to "Daily" restores that set instantly.
+
+| Action | Where | Notes |
+|---|---|---|
+| Switch | profile name button (left, 180px) | The current profile is marked with a green ●; clicking another one switches and saves |
+| Duplicate | `Copy` in the row | Creates a new profile from that one (slots + shortcuts) and activates it |
+| Delete | `X` in the row | At least one profile must remain; deleting the active one falls back to the first |
+| Rename | bottom box + `Rename` | The box starts with the current name; insertion order is preserved |
+| Create | `+ Copy current` / `+ New blank` | The first copies the active profile, the second creates 8 empty slots with no shortcuts |
+
+In `config/skyziyou.json` the new fields are `activeProfile` and `profiles` (each with `wheelSlots` and `shortcuts`); a legacy top-level `slots` / `shortcuts` pair is migrated into the `Default` profile on first load, so nothing is lost.
 
 ### Custom Shortcuts
 

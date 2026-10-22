@@ -154,6 +154,14 @@ object WheelState {
     }
 
     /**
+     * Closes the wheel without running anything. Used when the active profile changes,
+     * so a wheel opened with the old slot layout cannot execute one of its entries.
+     */
+    fun cancel() {
+        if (isOpen) close(false)
+    }
+
+    /**
      * Runs one entry: text starting with '/' is executed as a command, anything else
      * is sent as a chat message. Shared by the wheel and the custom shortcuts.
      */

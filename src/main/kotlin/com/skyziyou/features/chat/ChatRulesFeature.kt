@@ -1,8 +1,10 @@
 package com.skyziyou.features.chat
 
 import com.skyziyou.ChatRuleEntry
+import com.skyziyou.I18n
 import com.skyziyou.SkyziyouConfig
 import com.skyziyou.features.ActionQueue
+import com.skyziyou.features.alert.ScreenAlerts
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -172,7 +174,28 @@ object ChatRulesFeature {
         }
         if (pending.size >= MAX_PENDING) return false
         pending.add(PendingAction(rule, command, chat, System.currentTimeMillis() + delaySeconds * 1000L))
+        // one-shot on-screen notice through the existing banner HUD; the banner
+        // itself expires on its own, nothing is queued for the execution moment
+        ScreenAlerts.notifyExternal(delayNotice(delaySeconds, if (command != null) "/$command" else chat.orEmpty()))
         return true
+    }
+
+    /**
+     * Builds the banner text for a delayed action. Text is drawn at the user's
+     * Screen Alerts scale, so a long command is trimmed to the on-screen width
+     * (the action is echoed back, never sent anywhere).
+     */
+    private fun delayNotice(seconds: Int, action: String): String {
+        val scale = ScreenAlerts.fontScale()
+        val maxWidth = (mc.window.guiScaledWidth * 0.9f / scale).toInt()
+        fun build(body: String) = I18n.t("chatrules.delay_notice", seconds, body)
+        var body = action
+        if (mc.font.width(build(body)) > maxWidth) {
+            var end = body.length
+            while (end > 1 && mc.font.width(build(body.take(end) + "…")) > maxWidth) end--
+            body = body.take(end) + "…"
+        }
+        return build(body)
     }
 
     /** Compiles, ReDoS-validates and caches a regex; reports a bad pattern locally exactly once. */

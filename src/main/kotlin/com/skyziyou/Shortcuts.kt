@@ -47,6 +47,14 @@ object Shortcuts {
         wasDown.putAll(down)
     }
 
+    /**
+     * Forgets the pressed-key state. Called when the active profile changes, so a key
+     * already held down on the old profile cannot fire a shortcut of the new one.
+     */
+    fun resetState() {
+        wasDown.clear()
+    }
+
     private fun isDown(key: Int): Boolean =
         if (key in 0..7) WheelState.isMouseButtonDown(key)
         else InputConstants.isKeyDown(mc.window, key)

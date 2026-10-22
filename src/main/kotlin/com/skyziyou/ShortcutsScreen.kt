@@ -80,6 +80,15 @@ class ShortcutsScreen : BaseConfigScreen("cat.shortcuts") {
         )
     }
 
+    /** Shortcuts belong to the active profile, so show which one is in use. */
+    override fun drawBehind(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        graphics.text(
+            font,
+            I18n.t("profiles.active_hint", SkyziyouConfig.activeProfile),
+            pageX, 22, SkyTheme.TEXT_DIM, false,
+        )
+    }
+
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
         if (hasConflicts()) {

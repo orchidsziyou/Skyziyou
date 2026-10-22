@@ -105,10 +105,30 @@ class CommandAliasEntry(
 )
 
 /**
+ * One switchable profile. Only the wheel slot contents and the custom shortcuts
+ * belong to a profile; every other setting in [SkyziyouConfig] is global.
+ */
+class ProfileData(
+    /** Eight wheel slot texts: up, up-right, right, down-right, down, down-left, left, up-left. */
+    val wheelSlots: MutableList<String> = MutableList(SkyziyouConfig.WHEEL_SLOTS) { "" },
+    /** Custom shortcuts belonging to this profile. */
+    val shortcuts: MutableList<ShortcutEntry> = mutableListOf(),
+)
+
+/**
  * Simple JSON-backed config, stored in `.minecraft/config/skyziyou.json`.
  * Entries starting with '/' are executed as commands, anything else is sent as a chat message.
  */
 object SkyziyouConfig {
+
+    /** Number of wheel slots (fixed); see [ProfileData.wheelSlots]. */
+    const val WHEEL_SLOTS = 8
+
+    /** Profile that always exists and is used for configs from before profiles were introduced. */
+    const val DEFAULT_PROFILE = "Default"
+
+    /** Longest accepted profile name, in characters. */
+    const val MAX_PROFILE_NAME = 24
 
     /** Settings UI language code ("EN" / "ZH"); see [I18n]. */
     var language: String = "EN"
@@ -137,14 +157,23 @@ object SkyziyouConfig {
     /** Seconds the wheel may stay open before it auto-closes without executing. */
     var timeoutSeconds: Int = 10
 
-    /** Up, Up Right, Right, Down Right, Down, Down Left, Left, Up Left */
-    val slots: MutableList<String> = mutableListOf(
-        "/ah", "", "", "",
-        "/bz", "", "", "",
+    /** All profiles, insertion-ordered; [DEFAULT_PROFILE] always exists. */
+    val profiles: LinkedHashMap<String, ProfileData> = linkedMapOf(
+        DEFAULT_PROFILE to ProfileData(
+            mutableListOf("/ah", "", "", "", "/bz", "", "", ""),
+        ),
     )
 
-    /** Custom key shortcuts; pressing the bound key runs the entry immediately. */
-    val shortcuts: MutableList<ShortcutEntry> = mutableListOf()
+    /** Name of the profile currently in use; see [switchProfile]. */
+    var activeProfile: String = DEFAULT_PROFILE
+
+    /** Wheel slot contents of the active profile (Up, Up Right, Right, Down Right, Down, Down Left, Left, Up Left). */
+    val slots: MutableList<String>
+        get() = currentProfile().wheelSlots
+
+    /** Custom shortcuts of the active profile; pressing the bound key runs the entry immediately. */
+    val shortcuts: MutableList<ShortcutEntry>
+        get() = currentProfile().shortcuts
 
     /** Custom Chat Rules master switch. */
     var chatRulesEnabled: Boolean = true
@@ -231,6 +260,97 @@ object SkyziyouConfig {
     private val legacyFile: Path
         get() = FabricLoader.getInstance().configDir.resolve("commandwheel.json")
 
+    /** Active profile, creating an empty one only if the config was corrupted. */
+    private fun currentProfile(): ProfileData {
+        profiles[activeProfile]?.let { return it }
+        val created = ProfileData()
+        profiles[activeProfile] = created
+        return created
+    }
+
+    /**
+     * Switches the active profile (wheel slots + custom shortcuts) and persists it.
+     * Returns false for unknown names. Runtime state tied to the old profile is
+     * dropped: a wheel opened with the old slots must not execute, and held keys
+     * must not fire a shortcut from the new profile on the same press.
+     */
+    fun switchProfile(name: String): Boolean {
+        if (!profiles.containsKey(name)) return false
+        if (name != activeProfile) {
+            activeProfile = name
+            WheelState.cancel()
+            Shortcuts.resetState()
+            save()
+        }
+        return true
+    }
+
+    /**
+     * Creates a profile and makes it active. [copyFrom] copies that profile's wheel
+     * slots and shortcuts; pass null for an empty 8-slot wheel. Returns the accepted
+     * name, or null when the name is blank, too long after trimming, or already taken.
+     */
+    fun createProfile(name: String, copyFrom: String? = activeProfile): String? {
+        val clean = name.trim().take(MAX_PROFILE_NAME)
+        if (clean.isBlank() || profiles.containsKey(clean)) return null
+        val source = copyFrom?.let { profiles[it] }
+        profiles[clean] = ProfileData(
+            wheelSlots = source?.wheelSlots?.toMutableList() ?: MutableList(WHEEL_SLOTS) { "" },
+            shortcuts = source?.shortcuts
+                ?.map { ShortcutEntry(it.key, it.command, it.enabled) }
+                ?.toMutableList()
+                ?: mutableListOf(),
+        )
+        switchProfile(clean)
+        return clean
+    }
+
+    /** Renames a profile in place (order is kept); false when the new name is unusable. */
+    fun renameProfile(old: String, new: String): Boolean {
+        val clean = new.trim().take(MAX_PROFILE_NAME)
+        if (clean.isBlank() || clean == old || profiles.containsKey(clean)) return false
+        val data = profiles[old] ?: return false
+        val snapshot = profiles.entries.map { if (it.key == old) clean to data else it.key to it.value }
+        profiles.clear()
+        snapshot.forEach { (name, value) -> profiles[name] = value }
+        if (activeProfile == old) activeProfile = clean
+        save()
+        return true
+    }
+
+    /** Deletes a profile; the last remaining one cannot be removed. */
+    fun deleteProfile(name: String): Boolean {
+        if (profiles.size <= 1 || !profiles.containsKey(name)) return false
+        profiles.remove(name)
+        if (activeProfile == name) {
+            activeProfile = profiles.keys.first()
+            WheelState.cancel()
+            Shortcuts.resetState()
+        }
+        save()
+        return true
+    }
+
+    /** Parses one profile object; missing or malformed fields fall back to empty slots/entries. */
+    private fun parseProfile(obj: com.google.gson.JsonObject): ProfileData {
+        val data = ProfileData()
+        obj.getAsJsonArray("wheelSlots")?.let { array ->
+            for (i in 0 until minOf(array.size(), WHEEL_SLOTS)) {
+                data.wheelSlots[i] = array[i].takeIf { it.isJsonPrimitive }?.asString ?: ""
+            }
+        }
+        obj.getAsJsonArray("shortcuts")?.let { array ->
+            for (element in array) {
+                val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: GLFW.GLFW_KEY_UNKNOWN
+                val command = entry.get("command")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                val enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+                data.shortcuts.add(ShortcutEntry(key, command, enabled))
+            }
+        }
+        return data
+    }
+
     /**
      * Reads the config file if it exists. Missing or malformed fields keep their
      * defaults; IO errors are swallowed so the game can always start.
@@ -259,27 +379,48 @@ object SkyziyouConfig {
             prim("sizePercent")?.let { sizePercent = it.asInt }
             prim("fontScalePercent")?.let { fontScalePercent = it.asInt }
             prim("timeoutSeconds")?.let { timeoutSeconds = it.asInt }
-            // copy at most the known slot count so an oversized array cannot break the list
-            obj.getAsJsonArray("slots")?.let { array ->
-                for (i in 0 until minOf(array.size(), slots.size)) {
-                    slots[i] = array[i].asString
+            // profiles (wheel slots + shortcuts). New format stores them under "profiles";
+            // configs written before profiles existed keep both groups at the top level
+            // and are migrated into the "Default" profile here.
+            val profilesObj = obj.get("profiles")?.takeIf { it.isJsonObject }?.asJsonObject
+            if (profilesObj != null) {
+                profiles.clear()
+                for ((name, element) in profilesObj.entrySet()) {
+                    val data = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                    val clean = name.trim().take(MAX_PROFILE_NAME)
+                    if (clean.isBlank()) continue
+                    profiles[clean] = parseProfile(data)
                 }
+                if (profiles.isEmpty()) profiles[DEFAULT_PROFILE] = ProfileData()
+                prim("activeProfile")?.asString?.let { saved ->
+                    if (profiles.containsKey(saved)) activeProfile = saved
+                }
+                // a stored active name that no longer exists must not leave a dangling profile
+                if (!profiles.containsKey(activeProfile)) activeProfile = profiles.keys.first()
+            } else {
+                val migrated = ProfileData()
+                // at most the known slot count, so an oversized array cannot break the list
+                obj.getAsJsonArray("slots")?.let { array ->
+                    for (i in 0 until minOf(array.size(), WHEEL_SLOTS)) {
+                        migrated.wheelSlots[i] = array[i].asString
+                    }
+                }
+                obj.getAsJsonArray("shortcuts")?.let { array ->
+                    for (element in array) {
+                        val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                        val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: GLFW.GLFW_KEY_UNKNOWN
+                        val command = entry.get("command")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                        val enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+                        migrated.shortcuts.add(ShortcutEntry(key, command, enabled))
+                    }
+                }
+                profiles[DEFAULT_PROFILE] = migrated
+                activeProfile = DEFAULT_PROFILE
             }
             // auto party invite feature
             prim("autoInviteEnabled")?.let { autoInviteEnabled = it.asBoolean }
             prim("autoInviteLog")?.let { autoInviteLog = it.asBoolean }
             prim("autoInviteHypixelOnly")?.let { autoInviteHypixelOnly = it.asBoolean }
-            // custom shortcuts; malformed entries are skipped entirely
-            obj.getAsJsonArray("shortcuts")?.let { array ->
-                shortcuts.clear()
-                for (element in array) {
-                    val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
-                    val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: GLFW.GLFW_KEY_UNKNOWN
-                    val command = entry.get("command")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
-                    val enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
-                    shortcuts.add(ShortcutEntry(key, command, enabled))
-                }
-            }
             // custom chat rules; malformed entries are skipped entirely
             prim("chatRulesEnabled")?.let { chatRulesEnabled = it.asBoolean }
             prim("chatRulesLog")?.let { chatRulesLog = it.asBoolean }
@@ -454,21 +595,29 @@ object SkyziyouConfig {
             obj.addProperty("sizePercent", sizePercent)
             obj.addProperty("fontScalePercent", fontScalePercent)
             obj.addProperty("timeoutSeconds", timeoutSeconds)
-            val array = com.google.gson.JsonArray()
-            slots.forEach { array.add(it) }
-            obj.add("slots", array)
+            // profiles: only wheel slots and shortcuts are profile-scoped; everything else is global
+            obj.addProperty("activeProfile", activeProfile)
+            val profilesObj = com.google.gson.JsonObject()
+            profiles.forEach { (name, data) ->
+                val dataObj = com.google.gson.JsonObject()
+                val slotArray = com.google.gson.JsonArray()
+                data.wheelSlots.forEach { slotArray.add(it) }
+                dataObj.add("wheelSlots", slotArray)
+                val shortcutArray = com.google.gson.JsonArray()
+                data.shortcuts.forEach { shortcut ->
+                    val entryObj = com.google.gson.JsonObject()
+                    entryObj.addProperty("key", shortcut.key)
+                    entryObj.addProperty("command", shortcut.command)
+                    entryObj.addProperty("enabled", shortcut.enabled)
+                    shortcutArray.add(entryObj)
+                }
+                dataObj.add("shortcuts", shortcutArray)
+                profilesObj.add(name, dataObj)
+            }
+            obj.add("profiles", profilesObj)
             obj.addProperty("autoInviteEnabled", autoInviteEnabled)
             obj.addProperty("autoInviteLog", autoInviteLog)
             obj.addProperty("autoInviteHypixelOnly", autoInviteHypixelOnly)
-            val shortcutArray = com.google.gson.JsonArray()
-            shortcuts.forEach { shortcut ->
-                val entryObj = com.google.gson.JsonObject()
-                entryObj.addProperty("key", shortcut.key)
-                entryObj.addProperty("command", shortcut.command)
-                entryObj.addProperty("enabled", shortcut.enabled)
-                shortcutArray.add(entryObj)
-            }
-            obj.add("shortcuts", shortcutArray)
             obj.addProperty("chatRulesEnabled", chatRulesEnabled)
             obj.addProperty("chatRulesLog", chatRulesLog)
             obj.addProperty("chatRulesHypixelOnly", chatRulesHypixelOnly)

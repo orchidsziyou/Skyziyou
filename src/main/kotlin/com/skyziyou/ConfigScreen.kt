@@ -22,6 +22,7 @@ enum class ConfigCategory(
     val factory: () -> BaseConfigScreen,
 ) {
     GENERAL("cat.general", "cat.general.desc", { GeneralScreen() }),
+    PROFILES("cat.profiles", "cat.profiles.desc", { ProfilesScreen() }),
     WHEEL("cat.wheel", "cat.wheel.desc", { WheelConfigScreen() }),
     SHORTCUTS("cat.shortcuts", "cat.shortcuts.desc", { ShortcutsScreen() }),
     CHAT_RULES("cat.chatrules", "cat.chatrules.desc", { ChatRulesScreen() }),
