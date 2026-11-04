@@ -36,13 +36,51 @@ object ScreenAlerts {
     const val SCALE_STEP = 0.25f
     const val DEFAULT_SCALE = 2.5f
 
+    /** Number of 0.25 increments between [MIN_SCALE] and [MAX_SCALE] (17 slider values). */
+    const val SCALE_STEPS = 16
+
     private val id: Identifier = Identifier.fromNamespaceAndPath("skyziyou", "screen_alerts")
     private val backgroundColor: Int = Color(0, 0, 0, 140).rgb
-    // reddish gold/amber (红黄色); § codes inside a banner can still override this
-    const val TEXT_COLOR = 0xFFFFB400.toInt()
+
+    /** reddish gold/amber (红黄色); § codes inside a banner can still override it */
+    const val DEFAULT_TEXT_COLOR = 0xFFFFB400.toInt()
+
+    /**
+     * Banner text colours offered by the colour slider, in order. The first entry is
+     * the default amber; every value is a plain ARGB int handed to the font renderer.
+     */
+    val COLOR_CHOICES: List<Int> = listOf(
+        DEFAULT_TEXT_COLOR.toLong(), 0xFFFFFFFF, 0xFFFF5555, 0xFFFF8C1A,
+        0xFFFFE14D, 0xFF55FF55, 0xFF33E0C0, 0xFF55CCFF,
+        0xFF6E8BFF, 0xFFB070FF, 0xFFFF70D0, 0xFFAAAAAA,
+    ).map { it.toInt() }
 
     /** Effective, clamped banner scale from config. */
     fun fontScale(): Float = SkyziyouConfig.screenAlertFontScale.coerceIn(MIN_SCALE, MAX_SCALE)
+
+    /** Effective banner colour from config, snapped to the nearest palette entry. */
+    fun textColor(): Int = nearestColor(SkyziyouConfig.screenAlertTextColor)
+
+    /** Position of [color] inside [COLOR_CHOICES] after snapping, so the slider never jumps. */
+    fun colorIndex(color: Int): Int = COLOR_CHOICES.indexOf(nearestColor(color)).coerceAtLeast(0)
+
+    /**
+     * Closest palette entry to [color] by squared RGB distance. Exactly what the colour
+     * slider shows, so a colour written by hand (or left over from an older build) snaps
+     * onto the palette instead of leaving the handle at the first slot.
+     */
+    fun nearestColor(color: Int): Int {
+        val target = color.takeIf { it != 0 } ?: DEFAULT_TEXT_COLOR
+        val tr = (target shr 16) and 0xFF
+        val tg = (target shr 8) and 0xFF
+        val tb = target and 0xFF
+        return COLOR_CHOICES.minByOrNull { candidate ->
+            val dr = ((candidate shr 16) and 0xFF) - tr
+            val dg = ((candidate shr 8) and 0xFF) - tg
+            val db = (candidate and 0xFF) - tb
+            dr * dr + dg * dg + db * db
+        } ?: DEFAULT_TEXT_COLOR
+    }
 
     private val mc: Minecraft get() = Minecraft.getInstance()
 
@@ -104,22 +142,34 @@ object ScreenAlerts {
         if (active.isEmpty()) return
 
         val font = mc.font
-        val centerX = mc.window.guiScaledWidth / 2
-        val baseY = (mc.window.guiScaledHeight * 0.16).toInt()
+        val screenW = mc.window.guiScaledWidth
+        val screenH = mc.window.guiScaledHeight
+        // X/Y are adjustable percentages of the GUI size, so the layout scales with every resolution
+        val centerX = (screenW * SkyziyouConfig.screenAlertXPercent / 100f).toInt()
+        val baseY = (screenH * SkyziyouConfig.screenAlertYPercent / 100f).toInt()
         val scale = fontScale()
+        val color = textColor()
         // gap grows with the scale so stacked banners never overlap
         val rowGap = (12f * scale).toInt()
 
         active.forEachIndexed { index, banner ->
-            drawBanner(g, font, banner.text, centerX, baseY + index * rowGap, scale)
+            drawBanner(g, font, banner.text, centerX, baseY + index * rowGap, scale, color)
         }
     }
 
     /**
      * Draw one centred banner: translucent dark bar + shadowed scaled text.
-     * Shared by the live HUD render and the size preview on the settings screen.
+     * Shared by the live HUD render and the previews on the settings screens.
      */
-    fun drawBanner(g: GuiGraphicsExtractor, font: Font, text: String, centerX: Int, y: Int, scale: Float) {
+    fun drawBanner(
+        g: GuiGraphicsExtractor,
+        font: Font,
+        text: String,
+        centerX: Int,
+        y: Int,
+        scale: Float,
+        color: Int = textColor(),
+    ) {
         val pose = g.pose()
         pose.pushMatrix()
         pose.translate(centerX.toFloat(), y.toFloat())
@@ -127,7 +177,7 @@ object ScreenAlerts {
         try {
             val width = font.width(text)
             g.fill(-width / 2 - 3, -5, width / 2 + 3, 6, backgroundColor)
-            g.text(font, text, -width / 2, -4, TEXT_COLOR, true)
+            g.text(font, text, -width / 2, -4, color, true)
         } finally {
             pose.popMatrix()
         }

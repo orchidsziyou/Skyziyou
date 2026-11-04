@@ -54,6 +54,14 @@ class ScreenAlertsScreen : BaseConfigScreen("cat.alerts") {
             },
         ).also { it.active = ScreenAlerts.fontScale() < ScreenAlerts.MAX_SCALE }
 
+        // opens the detailed appearance editor (position, size, colour) with a live preview
+        addRenderableWidget(
+            SkyButton(left + 252, 26, 92, 20, Component.literal(I18n.t("alerts.adjust"))) {
+                //~ if < 26.2 'minecraft.gui.setScreen' -> 'minecraft.setScreen'
+                minecraft.gui.setScreen(ScreenAlertAdjustScreen())
+            },
+        )
+
         // one row per alert: [on/off][trigger][show text][channel][x]
         for (row in 0 until visibleRows()) {
             val index = scroll + row
@@ -123,7 +131,7 @@ class ScreenAlertsScreen : BaseConfigScreen("cat.alerts") {
         graphics.text(font, caption, pageCX - font.width(caption) / 2, height - 162, SkyTheme.TEXT, false)
         ScreenAlerts.drawBanner(
             graphics, font, I18n.t("alerts.preview"),
-            pageCX, height - 122, ScreenAlerts.fontScale(),
+            pageCX, height - 122, ScreenAlerts.fontScale(), ScreenAlerts.textColor(),
         )
 
         graphics.text(

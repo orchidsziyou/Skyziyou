@@ -130,6 +130,10 @@ object SkyziyouConfig {
     /** Longest accepted profile name, in characters. */
     const val MAX_PROFILE_NAME = 24
 
+    /** Default Screen Alerts banner centre (percent of the GUI size), restored by the Reset button. */
+    const val DEFAULT_ALERT_X = 50
+    const val DEFAULT_ALERT_Y = 16
+
     /** Settings UI language code ("EN" / "ZH"); see [I18n]. */
     var language: String = "EN"
 
@@ -216,6 +220,15 @@ object SkyziyouConfig {
 
     /** Banner font scale for Screen Alerts (clamped to 1.0..5.0 at use time). */
     var screenAlertFontScale: Float = 2.5f
+
+    /** Banner centre X position in percent of the GUI width (0-100, 50 = centred). */
+    var screenAlertXPercent: Int = DEFAULT_ALERT_X
+
+    /** Banner centre Y position in percent of the GUI height (0-100, 16 = near the top). */
+    var screenAlertYPercent: Int = DEFAULT_ALERT_Y
+
+    /** Banner text colour (ARGB); § codes inside the banner text still override it. */
+    var screenAlertTextColor: Int = 0xFFFFB400.toInt()
 
     /** Entity Highlights master switch. */
     var entityHighlightsEnabled: Boolean = true
@@ -506,6 +519,9 @@ object SkyziyouConfig {
                 }
             }
             prim("screenAlertFontScale")?.let { screenAlertFontScale = it.asFloat }
+            prim("screenAlertXPercent")?.let { screenAlertXPercent = it.asInt.coerceIn(0, 100) }
+            prim("screenAlertYPercent")?.let { screenAlertYPercent = it.asInt.coerceIn(0, 100) }
+            prim("screenAlertTextColor")?.let { screenAlertTextColor = it.asInt }
             // entity highlights; malformed entries are skipped entirely
             prim("entityHighlightsEnabled")?.let { entityHighlightsEnabled = it.asBoolean }
             obj.getAsJsonArray("entityHighlights")?.let { array ->
@@ -674,6 +690,9 @@ object SkyziyouConfig {
             }
             obj.add("screenAlerts", alertArray)
             obj.addProperty("screenAlertFontScale", screenAlertFontScale)
+            obj.addProperty("screenAlertXPercent", screenAlertXPercent)
+            obj.addProperty("screenAlertYPercent", screenAlertYPercent)
+            obj.addProperty("screenAlertTextColor", screenAlertTextColor)
             obj.addProperty("entityHighlightsEnabled", entityHighlightsEnabled)
             val highlightArray = com.google.gson.JsonArray()
             entityHighlights.forEach { highlight ->
