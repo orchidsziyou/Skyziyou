@@ -1,9 +1,7 @@
 package com.skyziyou
 
-import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
-import org.lwjgl.glfw.GLFW
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
@@ -82,14 +80,14 @@ object WheelState {
      */
     fun onMouseButton(button: Int, action: Int): Boolean {
         // always record the pressed state so isTriggerDown() can poll mouse-bound triggers
-        mouseDown[button] = action == GLFW.GLFW_PRESS
+        mouseDown[button] = action == Keys.PRESS
         if (!isOpen) return false
         // releasing the trigger itself must reach vanilla, otherwise the key would stick
-        if (button == boundTriggerMouseButton() && action == GLFW.GLFW_RELEASE) return false
+        if (button == boundTriggerMouseButton() && action == Keys.RELEASE) return false
         //~ if < 26.2 'mc.gui.screen()' -> 'mc.screen'
         if (mc.gui.screen() != null) return false
         // swallow releases of buttons whose press was swallowed while the wheel was open
-        if (action != GLFW.GLFW_PRESS) return true
+        if (action != Keys.PRESS) return true
         when (button) {
             LEFT_MOUSE -> if (selectedSector != null) close(execute = true) // run the selected entry
             RIGHT_MOUSE -> close(execute = false)                           // cancel
@@ -187,13 +185,8 @@ object WheelState {
         mc.player?.sendSystemMessage(Component.literal(message))
     }
 
-    /** True while the trigger is held; mouse buttons come from [mouseDown], keyboard keys are polled directly. */
-    private fun isTriggerDown(): Boolean {
-        val key = SkyziyouConfig.keybind
-        if (key == GLFW.GLFW_KEY_UNKNOWN) return false  // unbound
-        if (key in 0..7) return mouseDown[key] == true  // 0-7 is a mouse button
-        return InputConstants.isKeyDown(mc.window, key) // otherwise a keyboard keycode
-    }
+    /** True while the trigger is held; [Keys.isDown] covers both mouse buttons and key codes. */
+    private fun isTriggerDown(): Boolean = Keys.isDown(SkyziyouConfig.keybind)
 
     /** GLFW button number when the trigger key is bound to a mouse button, otherwise null. */
     private fun boundTriggerMouseButton(): Int? = SkyziyouConfig.keybind.takeIf { it in 0..7 }

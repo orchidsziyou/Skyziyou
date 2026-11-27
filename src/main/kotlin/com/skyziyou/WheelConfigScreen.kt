@@ -1,6 +1,5 @@
 package com.skyziyou
 
-import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -9,7 +8,6 @@ import net.minecraft.client.gui.components.AbstractSliderButton
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.network.chat.Component
-import org.lwjgl.glfw.GLFW
 
 /**
  * "Command Wheel" settings sub-page, reached from the [BaseConfigScreen] sidebar.
@@ -114,7 +112,7 @@ class WheelConfigScreen : BaseConfigScreen("cat.wheel") {
         val keyCode = event.key()
         if (listeningForKey) {
             // ESC cancels the binding instead of setting it; any other key is captured
-            if (keyCode != GLFW.GLFW_KEY_ESCAPE) {
+            if (keyCode != Keys.ESCAPE) {
                 SkyziyouConfig.keybind = keyCode
             }
             listeningForKey = false
@@ -138,13 +136,7 @@ class WheelConfigScreen : BaseConfigScreen("cat.wheel") {
 
     /** Button caption showing the current keybind, or the localised "not set" when unbound. */
     private fun keybindLabel(): Component {
-        val key = SkyziyouConfig.keybind
-        val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
-            I18n.t("common.not_set")
-        } else {
-            val type = if (key in 0..7) InputConstants.Type.MOUSE else InputConstants.Type.KEYSYM
-            type.getOrCreate(key).displayName.string
-        }
+        val name = Keys.displayNameOrNull(SkyziyouConfig.keybind) ?: I18n.t("common.not_set")
         return Component.literal(I18n.t("wheel.keybind", name))
     }
 

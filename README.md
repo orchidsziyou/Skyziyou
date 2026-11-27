@@ -4,7 +4,7 @@
 
 > 本模组为 AI 辅助生成，如有介意请勿使用。
 
-本模组为 Minecraft Fabric 端多功能辅助模组（主要用于 Hypixel SkyBlock）：按住一个自定义按键即可在屏幕中央打开一个 8 方位的指令轮盘，鼠标向某个方向滑动选中扇区，然后左键点击（或松开按键）即可快速执行预设指令或发送聊天消息；此外还包含自定义快捷键、自定义命令别名、按聊天频道自动触发动作的自定义聊天规则、进入冰川矿井时自动向队伍频道播报尸体数量与类别、私信自动邀请等独立功能。支持 **Minecraft 26.1 与 26.2**，两个版本由同一份源码构建、分别发布对应 jar。
+本模组为 Minecraft Fabric 端多功能辅助模组（主要用于 Hypixel SkyBlock）：按住一个自定义按键即可在屏幕中央打开一个 8 方位的指令轮盘，鼠标向某个方向滑动选中扇区，然后左键点击（或松开按键）即可快速执行预设指令或发送聊天消息；此外还包含自定义快捷键、自定义命令别名、按聊天频道自动触发动作的自定义聊天规则、进入冰川矿井时自动向队伍频道播报尸体数量与类别、私信自动邀请等独立功能。支持 **Minecraft 26.1、26.2 与 26.3**，三个版本由同一份源码构建、分别发布对应 jar。
 
 ## 界面预览
 
@@ -69,13 +69,15 @@
   - 详细格式（默认）：`/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`；简略格式：`/pc Corpses (4): 2l 1u 1vg`（l/t/u/vg 分别为 Lapis/Tungsten/Umber/Vanguard，只列出该矿井存在的类别）
   - 数据直接来自 Tab 文本，**不扫描实体、不受视距影响**，进入矿井加载完成后约 1 秒内发送；每个矿井只播报一次，离开后再次进入才会重新播报
   - 总开关、仅 Hypixel 生效、详细/简略格式选项（总开关默认开启，默认详细格式）
+  - **尸体高亮**：同一页面的 "Highlight Corpses" 开关开启后，矿井内每秒扫描一次已同步到客户端的盔甲架，按头部物品 ID 识别四类尸体（Lapis 深蓝 / Tungsten 灰 / Umber 金 / Vanguard 蓝），在可调距离内（默认 24 格，8–48）给它们加原版发光轮廓，**可隔墙看到**；离开矿井、关闭功能或走出范围即撤掉。距离判定带 6 格滞回，边界不闪烁
+  - 纯客户端读取已收到的实体数据 + 本地下发光位，不发任何包；Entity Highlights 页的 Debug 覆盖层会额外列出检测到的尸体类型、距离与当前是否发光，方便在矿井里验证
 - **Auto Party Invite**：收到内容为 `!invite` 的 Hypixel 私信时自动执行 `/p <玩家>`（同玩家 60 秒冷却、命令间隔 1 秒排队）
 
 ## 环境要求
 
 | 项目 | 版本 |
 |---|---|
-| Minecraft | **26.1.x 或 26.2**（请下载与游戏版本对应的 jar） |
+| Minecraft | **26.1.x、26.2 或 26.3**（请下载与游戏版本对应的 jar） |
 | Fabric Loader | >= 0.19.0 |
 | Fabric API | 与游戏版本对应的最新版 |
 | Fabric Language Kotlin | >= 1.13.0 |
@@ -87,7 +89,7 @@
 
 1. 安装 [Fabric Loader](https://fabricmc.net/use/installer/)
 2. 下载 [Fabric API](https://modrinth.com/mod/fabric-api) 与 [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin)，放入 `mods` 文件夹
-3. 从 [Releases](../../releases) 页面下载**与你的 Minecraft 版本对应**的模组 jar（文件名含 `mc26.1` 或 `mc26.2`），放入 `mods` 文件夹
+3. 从 [Releases](../../releases) 页面下载**与你的 Minecraft 版本对应**的模组 jar（文件名含 `mc26.1`、`mc26.2` 或 `mc26.3`），放入 `mods` 文件夹
 4. 启动游戏
 
 ## 使用方法
@@ -234,7 +236,7 @@
 
 ## 从源码构建
 
-本仓库使用 [Stonecutter](https://github.com/kikugie-studio/stonecutter) 管理多版本，同一份源码可分别构建 26.1 与 26.2 的 jar。
+本仓库使用 [Stonecutter](https://github.com/kikugie-studio/stonecutter) 管理多版本，同一份源码可分别构建 26.1、26.2 与 26.3 的 jar。
 
 **JDK 要求**：运行 Gradle 需要任意 JDK 17 或更高版本（使用 `JAVA_HOME` / PATH 中的即可）；编译与游戏运行所需的 **JDK 25** 由 Gradle 工具链自动探测，本机没有时会通过 foojay 自动下载，无需在配置文件中写死 JDK 路径。
 
@@ -243,17 +245,18 @@ git clone https://github.com/orchidsziyou/Skyziyou.git
 cd Skyziyou
 
 # Windows (PowerShell) —— 注意任务名冒号两侧不能有空格
-.\gradlew.bat :26.1:build :26.2:build   # 两个版本一起构建
-.\gradlew.bat :26.2:build               # 只构建 26.2
+.\gradlew.bat :26.1:build :26.2:build :26.3:build   # 三个版本一起构建
+.\gradlew.bat :26.3:build                           # 只构建 26.3
 
 # Linux / macOS
-./gradlew :26.1:build :26.2:build
+./gradlew :26.1:build :26.2:build :26.3:build
 ```
 
 构建产物（使用不带 `-sources` 后缀的 jar）：
 
 - 26.1：`versions/26.1/build/libs/Skyziyou-Fabric+mc26.1-<版本号>.jar`
 - 26.2：`versions/26.2/build/libs/Skyziyou-Fabric+mc26.2-<版本号>.jar`
+- 26.3：`versions/26.3/build/libs/Skyziyou-Fabric+mc26.3-<版本号>.jar`
 
 直接运行 `./gradlew build`（不带版本前缀）只构建当前激活的版本。
 
@@ -272,6 +275,7 @@ src/main/
 │   ├── GeneralScreen.kt        # General 综述页：版本号 / GitHub 链接 / 检查更新入口
 │   ├── UpdateChecker.kt        # 只读查询 GitHub 最新 release（后台线程，不自动下载）
 │   ├── WheelState.kt           # 轮盘核心状态机：打开/选中/关闭/执行
+│   ├── Keys.kt                 # 键码常量与按键轮询（26.3 移除 LWJGL 后集中在这里）
 │   ├── WheelRenderer.kt        # HUD 渲染：扫描线圆盘 + 文字标签
 │   ├── SkyziyouConfig.kt       # JSON 配置读写（原子写入、旧配置自动迁移）
 │   ├── WheelConfigScreen.kt    # Command Wheel 子页面
@@ -288,8 +292,8 @@ src/main/
 │       │   └── CommandAliases.kt / CommandAliasesScreen.kt
 │       ├── alert/              # 聊天关键词触发的屏幕中上方横幅提醒
 │       │   └── ScreenAlerts.kt / ScreenAlertsScreen.kt
-│       ├── mineshaft/          # 进入矿井后读取 Tab 尸体信息并 /pc 播报
-│       │   └── MineshaftCorpseReporter.kt / MineshaftCorpseScreen.kt
+│       ├── mineshaft/          # 进入矿井后读取 Tab 尸体信息并 /pc 播报 + 尸体发光高亮
+│       │   └── MineshaftCorpseReporter.kt / CorpseHighlights.kt / MineshaftCorpseScreen.kt
 │       ├── party/
 │       │   ├── AutoInviteFeature.kt        # 私信 !invite 自动邀请
 │       │   └── AutoInviteConfigScreen.kt   # 该功能的设置子页面
@@ -300,6 +304,7 @@ src/main/
 
 versions/26.1/src/main/resources/fabric.mod.json   # 26.1 模组元数据（依赖 ~26.1）
 versions/26.2/src/main/resources/fabric.mod.json   # 26.2 模组元数据（依赖 ~26.2）
+versions/26.3/src/main/resources/fabric.mod.json   # 26.3 模组元数据（依赖 ~26.3）
 settings.gradle.kts / stonecutter.gradle.kts       # Stonecutter 多版本构建配置
 ```
 

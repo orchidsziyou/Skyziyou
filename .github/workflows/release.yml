@@ -1,6 +1,6 @@
 name: Release
 
-# Builds the Minecraft 26.1 and 26.2 jars and publishes them to a GitHub Release.
+# Builds the Minecraft 26.1, 26.2 and 26.3 jars and publishes them to a GitHub Release.
 # Trigger by pushing a version tag, e.g.:
 #   git tag v1.2.0
 #   git push origin v1.2.0
@@ -31,8 +31,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build both Minecraft versions
-        run: ./gradlew :26.1:build :26.2:build --stacktrace
+      - name: Build all supported Minecraft versions
+        run: ./gradlew :26.1:build :26.2:build :26.3:build --stacktrace
 
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -40,4 +40,5 @@ jobs:
           files: |
             versions/26.1/build/libs/Skyziyou-Fabric+mc26.1-*.jar
             versions/26.2/build/libs/Skyziyou-Fabric+mc26.2-*.jar
+            versions/26.3/build/libs/Skyziyou-Fabric+mc26.3-*.jar
           generate_release_notes: true

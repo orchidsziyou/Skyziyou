@@ -8,6 +8,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.world.entity.Display
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.npc.villager.AbstractVillager
@@ -78,7 +79,12 @@ object EntityHighlights {
 
     private val mc: Minecraft = Minecraft.getInstance()
 
-    private data class Glow(val colorName: String, val scoreName: String)
+    /**
+     * [forced] marks a glow owned by another feature (mineshaft corpses) rather than a
+     * user rule: the periodic reconcile must not evict it, and turning the name
+     * highlights off must not clear it.
+     */
+    private class Glow(val colorName: String, val scoreName: String, var forced: Boolean = false)
 
     /** entityId -> currently applied colour + scoreboard name (member of our team + glowing). */
     private val glowing = HashMap<Int, Glow>()
@@ -158,7 +164,9 @@ object EntityHighlights {
 
         if (!enabled) {
             pending.clear()
-            clearAll(level)
+            // user-rule glows go away, but forced (mineshaft corpse) glows stay
+            clearAll(level, includeForced = false)
+            maintainGlows(level)
             return
         }
 
@@ -223,16 +231,15 @@ object EntityHighlights {
                 iterator.remove()
                 continue
             }
-            val living = entity as? LivingEntity
             // numeric entity ids get recycled after despawn; if a different entity now
             // holds this id, drop the stale membership instead of glowing the newcomer
             // until the next rescan (its own UUID will be matched independently)
-            if (living == null || living.scoreboardName != glow.scoreName) {
+            if (entity.scoreboardName != glow.scoreName) {
                 removeFromTeam(level, glow)
                 iterator.remove()
                 continue
             }
-            living.setGlowFlag(true)
+            entity.setGlowFlag(true)
         }
     }
 
@@ -250,7 +257,7 @@ object EntityHighlights {
         }
 
         for ((entityId, colorName) in wanted) {
-            val entity = level.getEntity(entityId) as? LivingEntity ?: continue
+            val entity = level.getEntity(entityId) ?: continue
             if (glowing[entityId]?.colorName != colorName) applyGlow(level, entity, colorName)
             entity.setGlowFlag(true)
             // already matched now, no need to keep retrying it
@@ -260,11 +267,13 @@ object EntityHighlights {
         val iterator = glowing.iterator()
         while (iterator.hasNext()) {
             val (entityId, glow) = iterator.next()
+            // forced glows belong to another feature and are released by their owner
+            if (glow.forced) continue
             if (wanted.containsKey(entityId)) continue
             removeFromTeam(level, glow)
             // only clear the flag of the SAME entity; an id reused by another entity
             // already has default (unset) flags and must not be touched here
-            val entity = level.getEntity(entityId) as? LivingEntity
+            val entity = level.getEntity(entityId)
             if (entity != null && entity.scoreboardName == glow.scoreName) entity.setGlowFlag(false)
             iterator.remove()
         }
@@ -329,7 +338,7 @@ object EntityHighlights {
     }
 
     /** Puts [entity] into the colour team (recolouring when needed) and flags it glowing. */
-    private fun applyGlow(level: ClientLevel, entity: LivingEntity, colorName: String) {
+    private fun applyGlow(level: ClientLevel, entity: Entity, colorName: String, forced: Boolean = false) {
         glowing[entity.id]?.let { if (it.colorName != colorName) removeFromTeam(level, it) }
         val team = teamFor(level, colorName)
         // Membership can move out from under us between scans: Hypixel itself puts some
@@ -341,16 +350,54 @@ object EntityHighlights {
         if (currentTeam == null) {
             level.scoreboard.addPlayerToTeam(entity.scoreboardName, team)
         }
-        glowing[entity.id] = Glow(colorName, entity.scoreboardName)
+        glowing[entity.id] = Glow(colorName, entity.scoreboardName, forced)
         entity.setGlowFlag(true)
     }
+
+    /**
+     * Forces a glow on any entity for another feature (mineshaft corpses). Forced glows
+     * survive the periodic user-rule reconcile and the "name highlights off" cleanup;
+     * the owner must call [releaseForced] when it stops caring about the entity.
+     */
+    fun forceGlow(entity: Entity, colorName: String) {
+        val level = mc.level ?: return
+        val current = glowing[entity.id]
+        // same colour and same holder: just re-assert the flag (fast path)
+        if (current != null && current.colorName == colorName && current.scoreName == entity.scoreboardName) {
+            current.forced = true
+            entity.setGlowFlag(true)
+            return
+        }
+        if (current != null) {
+            removeFromTeam(level, current)
+            glowing.remove(entity.id)
+        }
+        applyGlow(level, entity, colorName, forced = true)
+    }
+
+    /** Drops a forced glow; never touches a glow owned by a user rule. */
+    fun releaseForced(entityId: Int) {
+        val glow = glowing[entityId] ?: return
+        if (!glow.forced) return
+        val level = mc.level
+        if (level != null) {
+            removeFromTeam(level, glow)
+            // never clear the flag of a different entity that reused this numeric id
+            val entity = level.getEntity(entityId)
+            if (entity != null && entity.scoreboardName == glow.scoreName) entity.setGlowFlag(false)
+        }
+        glowing.remove(entityId)
+    }
+
+    /** Whether [entityId] is currently glowing (used by diagnostic overlays). */
+    fun isGlowing(entityId: Int): Boolean = glowing.containsKey(entityId)
 
     /**
      * Forces the glowing shared flag directly. Entity#setGlowingTag cannot be used on
      * the physical client: it writes the flag from isCurrentlyGlowing(), which reads
      * the same flag back there, so setting it true while false is a no-op.
      */
-    private fun LivingEntity.setGlowFlag(glow: Boolean) {
+    private fun Entity.setGlowFlag(glow: Boolean) {
         (this as EntityAccessor).`skyziyou$setSharedFlag`(GLOW_FLAG, glow)
     }
 
@@ -402,13 +449,15 @@ object EntityHighlights {
     }
 
     /** Feature disabled: undo every highlight; empty teams stay registered harmlessly. */
-    private fun clearAll(level: ClientLevel) {
+    private fun clearAll(level: ClientLevel, includeForced: Boolean = true) {
         if (glowing.isEmpty()) return
         val iterator = glowing.iterator()
         while (iterator.hasNext()) {
             val (entityId, glow) = iterator.next()
+            // forced glows belong to another feature and are released by their owner
+            if (glow.forced && !includeForced) continue
             removeFromTeam(level, glow)
-            (level.getEntity(entityId) as? LivingEntity)?.setGlowFlag(false)
+            level.getEntity(entityId)?.setGlowFlag(false)
             iterator.remove()
         }
     }

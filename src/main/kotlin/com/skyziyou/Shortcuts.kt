@@ -1,8 +1,6 @@
 package com.skyziyou
 
-import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
-import org.lwjgl.glfw.GLFW
 
 /**
  * Custom key-to-command shortcuts. Each entry binds a key (GLFW keycode, 0-7 for
@@ -23,7 +21,7 @@ object Shortcuts {
         // update pressed states first so edges are not lost while a screen is open
         val down = HashMap<Int, Boolean>()
         for (entry in entries) {
-            if (entry.enabled && entry.key != GLFW.GLFW_KEY_UNKNOWN) down[entry.key] = isDown(entry.key)
+            if (entry.enabled && entry.key != Keys.UNKNOWN) down[entry.key] = Keys.isDown(entry.key)
         }
 
         val active = SkyziyouConfig.enabled &&
@@ -55,7 +53,4 @@ object Shortcuts {
         wasDown.clear()
     }
 
-    private fun isDown(key: Int): Boolean =
-        if (key in 0..7) WheelState.isMouseButtonDown(key)
-        else InputConstants.isKeyDown(mc.window, key)
 }

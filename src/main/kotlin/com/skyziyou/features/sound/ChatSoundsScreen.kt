@@ -13,9 +13,6 @@ import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import org.lwjgl.PointerBuffer
-import org.lwjgl.system.MemoryStack
-import org.lwjgl.util.tinyfd.TinyFileDialogs
 
 /**
  * "Chat Sounds" editor. Row layout:
@@ -341,22 +338,29 @@ class ChatSoundsScreen : BaseConfigScreen("cat.sounds") {
         rebuildWidgets()
     }
 
-    /** Native file chooser on a daemon thread; the game keeps rendering behind it. */
+    /**
+     * Native file chooser on a daemon thread; the game keeps rendering behind it.
+     * Uses the JDK's AWT dialog: Minecraft 26.3 no longer ships LWJGL/tinyfd, and on
+     * Windows this is the same OS-native dialog anyway.
+     */
     private fun pickFile() {
-        if (picking) return // tinyfd keeps global dialog state: never open two at once
+        if (picking) return // never open two native dialogs at once
         picking = true
         // snapshot localised strings on the client thread before leaving it
         val title = I18n.t("sounds.dialog_title")
-        val filter = I18n.t("sounds.dialog_filter")
         Thread({
             val picked = runCatching {
-                MemoryStack.stackPush().use { stack ->
-                    val patterns: PointerBuffer = stack.mallocPointer(2)
-                    patterns.put(stack.UTF8("*.ogg"))
-                    patterns.put(stack.UTF8("*.mp3"))
-                    patterns.flip()
-                    TinyFileDialogs.tinyfd_openFileDialog(title, null, patterns, filter, false)
+                val dialog = java.awt.FileDialog(null as java.awt.Frame?, title, java.awt.FileDialog.LOAD)
+                // Windows maps wildcard patterns in setFile onto the native filter; the
+                // FilenameFilter covers the platforms that ignore it (macOS/Linux).
+                dialog.file = "*.ogg;*.mp3"
+                dialog.setFilenameFilter { _, name ->
+                    name.endsWith(".ogg", ignoreCase = true) || name.endsWith(".mp3", ignoreCase = true)
                 }
+                dialog.isVisible = true
+                val dir = dialog.directory
+                val name = dialog.file
+                if (dir != null && name != null) java.io.File(dir, name).absolutePath else null
             }.getOrNull()
             // always release the guard on the client thread, even if the native call failed
             Minecraft.getInstance().execute {

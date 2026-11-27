@@ -203,6 +203,9 @@ object I18n {
         // mineshaft corpse page
         "corpses.title" to "Mineshaft Corpse Report",
         "corpses.detailed" to "Detailed Format",
+        "corpses.highlight" to "Highlight Corpses",
+        "corpses.highlight_range" to "§7Highlight range: §f{0} §7blocks",
+        "corpses.highlight_hint" to "§7Only inside a mineshaft · outlines are visible through walls within range",
         "corpses.line1" to "§7Reads the §fFrozen Corpses §7tab widget right after entering a mineshaft",
         "corpses.line2" to "§7and sends the corpse counts to party chat once via §f/pc§7.",
         "corpses.line4" to "§7Detailed: §f/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard",
@@ -398,6 +401,9 @@ object I18n {
         // mineshaft corpse page
         "corpses.title" to "矿井尸体播报",
         "corpses.detailed" to "详细格式",
+        "corpses.highlight" to "高亮尸体",
+        "corpses.highlight_range" to "§7高亮距离：§f{0} §7格",
+        "corpses.highlight_hint" to "§7仅在矿井内生效 · 范围内尸体轮廓可隔墙看到",
         "corpses.line1" to "§7进入矿井后读取 Tab 列表中的 §fFrozen Corpses §7区块",
         "corpses.line2" to "§7并通过 §f/pc§7 向队伍频道发送一次各类尸体数量。",
         "corpses.line4" to "§7详细：§f/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard",

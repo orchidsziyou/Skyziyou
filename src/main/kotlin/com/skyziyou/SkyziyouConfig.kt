@@ -2,7 +2,6 @@ package com.skyziyou
 
 import com.google.gson.JsonParser
 import net.minecraft.ChatFormatting
-import org.lwjgl.glfw.GLFW
 import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 import java.nio.file.Path
@@ -10,7 +9,7 @@ import java.nio.file.StandardCopyOption
 
 /** One custom shortcut: a key (GLFW keycode, 0-7 = mouse button) bound to a command or chat message. */
 class ShortcutEntry(
-    var key: Int = GLFW.GLFW_KEY_UNKNOWN,
+    var key: Int = Keys.UNKNOWN,
     var command: String = "",
     var enabled: Boolean = true,
 )
@@ -138,7 +137,7 @@ object SkyziyouConfig {
     var language: String = "EN"
 
     /** GLFW keycode of the wheel trigger; GLFW_KEY_UNKNOWN (-1) means unbound. Mouse buttons 0-7 are also allowed. */
-    var keybind: Int = GLFW.GLFW_KEY_UNKNOWN
+    var keybind: Int = Keys.UNKNOWN
 
     /** Master switch; when off the wheel cannot be opened. */
     var enabled: Boolean = true
@@ -266,6 +265,12 @@ object SkyziyouConfig {
      */
     var corpseReportDetailed: Boolean = true
 
+    /** Highlight mineshaft corpse armour stands; see com.skyziyou.features.mineshaft.CorpseHighlights. */
+    var corpseHighlightEnabled: Boolean = true
+
+    /** Highlight distance in blocks (8-48); outlines are visible through walls inside this range. */
+    var corpseHighlightRange: Int = 24
+
     private val file: Path
         get() = FabricLoader.getInstance().configDir.resolve("skyziyou.json")
 
@@ -355,7 +360,7 @@ object SkyziyouConfig {
         obj.getAsJsonArray("shortcuts")?.let { array ->
             for (element in array) {
                 val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
-                val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: GLFW.GLFW_KEY_UNKNOWN
+                val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: Keys.UNKNOWN
                 val command = entry.get("command")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
                 val enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
                 data.shortcuts.add(ShortcutEntry(key, command, enabled))
@@ -421,7 +426,7 @@ object SkyziyouConfig {
                 obj.getAsJsonArray("shortcuts")?.let { array ->
                     for (element in array) {
                         val entry = element.takeIf { it.isJsonObject }?.asJsonObject ?: continue
-                        val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: GLFW.GLFW_KEY_UNKNOWN
+                        val key = entry.get("key")?.takeIf { it.isJsonPrimitive }?.asInt ?: Keys.UNKNOWN
                         val command = entry.get("command")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
                         val enabled = entry.get("enabled")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
                         migrated.shortcuts.add(ShortcutEntry(key, command, enabled))
@@ -544,6 +549,8 @@ object SkyziyouConfig {
             prim("corpseReportEnabled")?.let { corpseReportEnabled = it.asBoolean }
             prim("corpseReportHypixelOnly")?.let { corpseReportHypixelOnly = it.asBoolean }
             prim("corpseReportDetailed")?.let { corpseReportDetailed = it.asBoolean }
+            prim("corpseHighlightEnabled")?.let { corpseHighlightEnabled = it.asBoolean }
+            prim("corpseHighlightRange")?.let { corpseHighlightRange = it.asInt.coerceIn(8, 48) }
             // custom command aliases; malformed entries are skipped entirely
             prim("aliasesEnabled")?.let { aliasesEnabled = it.asBoolean }
             prim("aliasesLog")?.let { aliasesLog = it.asBoolean }
@@ -706,6 +713,8 @@ object SkyziyouConfig {
             obj.addProperty("corpseReportEnabled", corpseReportEnabled)
             obj.addProperty("corpseReportHypixelOnly", corpseReportHypixelOnly)
             obj.addProperty("corpseReportDetailed", corpseReportDetailed)
+            obj.addProperty("corpseHighlightEnabled", corpseHighlightEnabled)
+            obj.addProperty("corpseHighlightRange", corpseHighlightRange)
             obj.addProperty("aliasesEnabled", aliasesEnabled)
             obj.addProperty("aliasesLog", aliasesLog)
             val aliasArray = com.google.gson.JsonArray()

@@ -4,7 +4,7 @@ English | [简体中文](./README.md)
 
 > This mod was generated with AI assistance; please do not use it if that bothers you.
 
-A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold a customizable key to open an 8-direction radial wheel in the center of the screen, flick the mouse toward a direction to select a sector, then left click (or release the key) to quickly run a preset command or send a chat message. It also ships custom key shortcuts, user-defined command aliases, chat rules that trigger actions per chat channel, an automatic party-chat report of mineshaft corpse counts when entering a Glacial Tunnels mineshaft, and automatic party invites via private messages. Both **Minecraft 26.1 and 26.2** are supported — a single source tree builds a separate jar for each version.
+A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold a customizable key to open an 8-direction radial wheel in the center of the screen, flick the mouse toward a direction to select a sector, then left click (or release the key) to quickly run a preset command or send a chat message. It also ships custom key shortcuts, user-defined command aliases, chat rules that trigger actions per chat channel, an automatic party-chat report of mineshaft corpse counts when entering a Glacial Tunnels mineshaft, and automatic party invites via private messages. Both **Minecraft 26.1, 26.2 and 26.3** are supported — a single source tree builds a separate jar for each version.
 
 ## Screenshots
 
@@ -69,13 +69,15 @@ A multi-feature Minecraft Fabric client mod (mainly for Hypixel SkyBlock): hold 
   - Detailed (default): `/pc Frozen Corpses (4): 2x Lapis, 1x Umber, 1x Vanguard`; brief: `/pc Corpses (4): 2l 1u 1vg` (l/t/u/vg = Lapis/Tungsten/Umber/Vanguard; only types present in the shaft are listed)
   - Data comes straight from tab text — **no entity scanning and no view-distance dependence**; the message is sent within about a second of the shaft loading, exactly once per mineshaft, and rearms only after leaving
   - Master switch, Hypixel-only restriction and detailed/brief format toggle (enabled by default, detailed format by default)
+  - **Corpse highlighting**: with "Highlight Corpses" enabled on the same page, every second inside a mineshaft the client scans the already-synced armour stands, identifies the four corpse types by their head item id (Lapis dark blue / Tungsten gray / Umber gold / Vanguard blue) and gives them the vanilla glowing outline within an adjustable distance (24 blocks by default, 8–48) — **visible through walls**; the outline is dropped on leaving the shaft, disabling the feature or walking out of range, with a 6-block hysteresis so the boundary does not flicker
+  - Purely client-side: it reads entities the server already streams and sets a local glow flag, sending no packets. The Debug overlay on the Entity Highlights page also lists detected corpse types, distances and whether they currently glow
 - **Auto Party Invite**: when a Hypixel private message contains exactly `!invite`, automatically runs `/p <player>` (60s per-player cooldown, commands queued 1s apart)
 
 ## Requirements
 
 | Component | Version |
 |---|---|
-| Minecraft | **26.1.x or 26.2** (download the jar matching your game version) |
+| Minecraft | **26.1.x, 26.2 or 26.3** (download the jar matching your game version) |
 | Fabric Loader | >= 0.19.0 |
 | Fabric API | latest build matching your game version |
 | Fabric Language Kotlin | >= 1.13.0 |
@@ -87,7 +89,7 @@ Client-side only; servers do not need to install anything.
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/)
 2. Download [Fabric API](https://modrinth.com/mod/fabric-api) and [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin) into your `mods` folder
-3. Download the mod jar matching **your Minecraft version** from the [Releases](../../releases) page (the filename contains `mc26.1` or `mc26.2`) into your `mods` folder
+3. Download the mod jar matching **your Minecraft version** from the [Releases](../../releases) page (the filename contains `mc26.1`, `mc26.2` or `mc26.3`) into your `mods` folder
 4. Start the game
 
 ## Usage
@@ -234,7 +236,7 @@ Fires only when a private message body is **exactly** `!invite` (case-insensitiv
 
 ## Building from Source
 
-This repository uses [Stonecutter](https://github.com/kikugie-studio/stonecutter) to manage multiple versions: one source tree produces separate jars for 26.1 and 26.2.
+This repository uses [Stonecutter](https://github.com/kikugie-studio/stonecutter) to manage multiple versions: one source tree produces separate jars for 26.1, 26.2 and 26.3.
 
 **JDK requirements**: any JDK 17 or newer is enough to run Gradle (the one from `JAVA_HOME` / PATH is used); the **JDK 25** needed for compilation and running the game is located automatically via the Gradle toolchain, and is provisioned through foojay if no local installation is found. No hard-coded JDK path needs to be configured.
 
@@ -243,17 +245,18 @@ git clone https://github.com/orchidsziyou/Skyziyou.git
 cd Skyziyou
 
 # Windows (PowerShell) — note there must be no spaces around the colons in task names
-.\gradlew.bat :26.1:build :26.2:build   # build both versions
-.\gradlew.bat :26.2:build               # build only 26.2
+.\gradlew.bat :26.1:build :26.2:build :26.3:build   # build all three versions
+.\gradlew.bat :26.3:build                           # build only 26.3
 
 # Linux / macOS
-./gradlew :26.1:build :26.2:build
+./gradlew :26.1:build :26.2:build :26.3:build
 ```
 
 Build output (use the jar without the `-sources` suffix):
 
 - 26.1: `versions/26.1/build/libs/Skyziyou-Fabric+mc26.1-<version>.jar`
 - 26.2: `versions/26.2/build/libs/Skyziyou-Fabric+mc26.2-<version>.jar`
+- 26.3: `versions/26.3/build/libs/Skyziyou-Fabric+mc26.3-<version>.jar`
 
 Running `./gradlew build` without a version prefix only builds the currently active version.
 
@@ -272,6 +275,7 @@ src/main/
 │   ├── GeneralScreen.kt        # General tab: version / GitHub links / update check entry
 │   ├── UpdateChecker.kt        # Read-only GitHub latest-release query (background, no auto-download)
 │   ├── WheelState.kt           # Core wheel state machine: open/select/close/execute
+│   ├── Keys.kt                 # Key codes + polling (LWJGL is gone in 26.3)
 │   ├── WheelRenderer.kt        # HUD rendering: scanline disc + text labels
 │   ├── SkyziyouConfig.kt       # JSON config I/O (atomic writes, legacy config migration)
 │   ├── WheelConfigScreen.kt    # Command Wheel settings sub-page
@@ -289,7 +293,7 @@ src/main/
 │       ├── alert/              # Chat-keyword triggered centred screen banners
 │       │   └── ScreenAlerts.kt / ScreenAlertsScreen.kt
 │       ├── mineshaft/          # Reads tab corpse widget on shaft entry, reports via /pc
-│       │   └── MineshaftCorpseReporter.kt / MineshaftCorpseScreen.kt
+│       │   └── MineshaftCorpseReporter.kt / CorpseHighlights.kt / MineshaftCorpseScreen.kt
 │       ├── party/
 │       │   ├── AutoInviteFeature.kt        # !invite PM auto party invite
 │       │   └── AutoInviteConfigScreen.kt   # Settings sub-page for that feature
@@ -300,6 +304,7 @@ src/main/
 
 versions/26.1/src/main/resources/fabric.mod.json   # 26.1 mod metadata (depends on ~26.1)
 versions/26.2/src/main/resources/fabric.mod.json   # 26.2 mod metadata (depends on ~26.2)
+versions/26.3/src/main/resources/fabric.mod.json   # 26.3 mod metadata (depends on ~26.3)
 settings.gradle.kts / stonecutter.gradle.kts       # Stonecutter multi-version build configuration
 ```
 

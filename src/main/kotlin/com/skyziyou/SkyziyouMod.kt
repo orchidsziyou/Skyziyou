@@ -6,6 +6,7 @@ import com.skyziyou.features.chat.ChatClassifier
 import com.skyziyou.features.chat.ChatRulesFeature
 import com.skyziyou.features.command.CommandAliases
 import com.skyziyou.features.highlight.EntityHighlights
+import com.skyziyou.features.mineshaft.CorpseHighlights
 import com.skyziyou.features.mineshaft.MineshaftCorpseReporter
 import com.skyziyou.features.party.AutoInviteFeature
 import com.skyziyou.features.sound.ChatSounds
@@ -39,6 +40,9 @@ object SkyziyouMod : ClientModInitializer {
         MineshaftCorpseReporter.register()
         ScreenAlerts.register()
         EntityHighlights.register()
+        // registered after EntityHighlights: its tick handler must run first, otherwise a
+        // level-change wipe could clear the corpse outlines applied in the same tick
+        CorpseHighlights.register()
 
         // /skyziyou and /sz both open the first config page (sidebar shell)
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->

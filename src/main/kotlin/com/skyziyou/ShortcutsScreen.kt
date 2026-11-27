@@ -1,12 +1,10 @@
 package com.skyziyou
 
-import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.network.chat.Component
-import org.lwjgl.glfw.GLFW
 
 /**
  * "Custom Shortcuts" editor sub-page, reached from the [BaseConfigScreen] sidebar.
@@ -115,7 +113,7 @@ class ShortcutsScreen : BaseConfigScreen("cat.shortcuts") {
         val keyCode = event.key()
         if (listeningIndex >= 0) {
             // ESC cancels the binding instead of setting it; any other key is captured
-            if (keyCode != GLFW.GLFW_KEY_ESCAPE) {
+            if (keyCode != Keys.ESCAPE) {
                 SkyziyouConfig.shortcuts.getOrNull(listeningIndex)?.key = keyCode
             }
             listeningIndex = -1
@@ -139,22 +137,17 @@ class ShortcutsScreen : BaseConfigScreen("cat.shortcuts") {
 
     /** True when an enabled shortcut shares its key with another one or with the wheel trigger. */
     private fun hasConflicts(): Boolean {
-        val keys = SkyziyouConfig.shortcuts.filter { it.enabled && it.key != GLFW.GLFW_KEY_UNKNOWN }.map { it.key }
+        val keys = SkyziyouConfig.shortcuts.filter { it.enabled && it.key != Keys.UNKNOWN }.map { it.key }
         return keys.size != keys.distinct().size || keys.any { it == SkyziyouConfig.keybind }
     }
 
     private fun keybindLabel(index: Int): Component {
         val entry = SkyziyouConfig.shortcuts[index]
         val key = entry.key
-        val name = if (key == GLFW.GLFW_KEY_UNKNOWN) {
-            I18n.t("common.not_set")
-        } else {
-            val type = if (key in 0..7) InputConstants.Type.MOUSE else InputConstants.Type.KEYSYM
-            type.getOrCreate(key).displayName.string
-        }
+        val name = Keys.displayNameOrNull(key) ?: I18n.t("common.not_set")
         var label = I18n.t("shortcuts.key", name)
         // flag keys that will not trigger or that clash with another enabled shortcut
-        if (key != GLFW.GLFW_KEY_UNKNOWN) {
+        if (key != Keys.UNKNOWN) {
             val duplicated = SkyziyouConfig.shortcuts.any { it !== entry && it.enabled && it.key == key }
             if (key == SkyziyouConfig.keybind || duplicated) label += " §c⚠"
         }

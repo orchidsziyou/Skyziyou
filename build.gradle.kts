@@ -8,9 +8,16 @@ val node = project.path.removePrefix(":")
 val minecraftVersion = when (node) {
     "26.1" -> "26.1.2"
     "26.2" -> "26.2"
+    "26.3" -> "26.3"
     else -> error("Unknown Stonecutter version node: '${project.path}'")
 }
-val fabricApiVersion = "0.155.2+$minecraftVersion"
+
+// Fabric API publishes per-Minecraft builds; the 26.1/26.2 line still shares 0.155.2,
+// while 26.3 only exists from 0.161.0 onwards.
+val fabricApiVersion = when (node) {
+    "26.3" -> "0.166.2+26.3"
+    else -> "0.155.2+$minecraftVersion"
+}
 
 plugins {
     java
@@ -19,7 +26,7 @@ plugins {
 }
 
 group = "com.skyziyou"
-version = "1.4.1"
+version = "1.5.0"
 
 base {
     archivesName.set("Skyziyou-Fabric+mc$node")

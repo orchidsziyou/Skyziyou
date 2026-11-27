@@ -3,7 +3,11 @@ package com.skyziyou
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
-import net.minecraft.util.Util
+
+/** Opens [url] in the system browser with the JDK's Desktop API (26.3 removed net.minecraft.Util). */
+private fun openInBrowser(url: String) {
+    runCatching { java.awt.Desktop.getDesktop().browse(java.net.URI(url)) }
+}
 
 /**
  * "General" sidebar tab: mod name, running version, short description, project
@@ -63,7 +67,7 @@ class GeneralScreen : BaseConfigScreen("cat.general") {
                 20,
                 Component.literal(I18n.t("general.open_releases")),
             ) {
-                runCatching { Util.getPlatform().openUri(UpdateChecker.latestPageUrl ?: RELEASES_URL) }
+                openInBrowser(UpdateChecker.latestPageUrl ?: RELEASES_URL)
             },
         )
         addRenderableWidget(
@@ -76,7 +80,7 @@ class GeneralScreen : BaseConfigScreen("cat.general") {
             ) {
                 // Desktop.browse is unsupported on a few locked-down JVMs; a failure must
                 // never crash the config screen, so swallow it (the URL is shown as text).
-                runCatching { Util.getPlatform().openUri(GITHUB_URL) }
+                openInBrowser(GITHUB_URL)
             },
         )
     }

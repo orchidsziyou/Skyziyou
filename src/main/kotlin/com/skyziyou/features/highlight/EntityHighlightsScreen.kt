@@ -6,6 +6,7 @@ import com.skyziyou.I18n
 import com.skyziyou.SkyButton
 import com.skyziyou.SkyTheme
 import com.skyziyou.SkyziyouConfig
+import com.skyziyou.features.mineshaft.CorpseHighlights
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
@@ -110,10 +111,13 @@ class EntityHighlightsScreen : BaseConfigScreen("cat.highlights") {
      */
     private fun renderDebugOverlay(graphics: GuiGraphicsExtractor) {
         val nearby = EntityHighlights.debugNearby()
+        val corpses = CorpseHighlights.debugCorpses()
         val boxW = 470
         val lineH = 10
         val extraLines = nearby.count { it.near.isNotBlank() }
-        val boxH = 14 + (nearby.size + 1 + extraLines) * lineH
+        // corpse section: one header line plus up to 8 rows
+        val corpseRows = if (corpses.isEmpty()) 0 else minOf(corpses.size, 8) + 1
+        val boxH = 14 + (nearby.size + 1 + extraLines + corpseRows) * lineH
         // keep the box inside the content area, never covering the sidebar
         val x1 = maxOf(SkyTheme.SIDEBAR_W + 4, width - boxW - 4)
         val y1 = 4
@@ -147,6 +151,25 @@ class EntityHighlightsScreen : BaseConfigScreen("cat.highlights") {
             y += lineH
             if (e.near.isNotBlank()) {
                 graphics.text(font, "      ${e.near}", x1 + 4, y, -1, false)
+                y += lineH
+            }
+        }
+
+        // mineshaft corpses detected by helmet id, with distance and current outline state
+        if (corpses.isNotEmpty()) {
+            graphics.text(
+                font,
+                "§bCorpses §7(detected ${corpses.size}: type / distance / outline)",
+                x1 + 4, y, -1, false,
+            )
+            y += lineH
+            for (corpse in corpses.take(8)) {
+                val state = if (corpse.glowing) "§aGLOW" else "§7-"
+                graphics.text(
+                    font,
+                    "  §f${corpse.type} §7${"%.1f".format(corpse.distance)}m $state",
+                    x1 + 4, y, -1, false,
+                )
                 y += lineH
             }
         }

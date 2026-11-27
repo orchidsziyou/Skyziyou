@@ -71,6 +71,9 @@ object MineshaftCorpseReporter {
         sendReport(counts)
     }
 
+    /** True while the "Frozen Corpses" tab widget is present, i.e. inside a mineshaft. */
+    fun inMineshaft(): Boolean = readTabLines().any { it.contains("Frozen Corpses", ignoreCase = true) }
+
     /** Plain text of every listed tab entry (section colours are stripped). */
     private fun readTabLines(): List<String> {
         val connection = mc.player?.connection ?: return emptyList()

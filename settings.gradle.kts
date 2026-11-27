@@ -22,7 +22,7 @@ rootProject.name = "Skyziyou"
 
 stonecutter {
     create(rootProject) {
-        versions("26.1", "26.2")
+        versions("26.1", "26.2", "26.3")
         // Version a fresh checkout / CI checkout is activated to.
         vcsVersion = "26.2"
     }
